@@ -1,0 +1,13 @@
+﻿apiVersion: instrumentations.newrelic.com/v1alpha1
+kind: Instrumentation
+metadata:
+  name: newrelic-instrumentation
+spec:
+  exporter:
+    endpoint: https://otlp.nr-data.net:4317
+  propagators:
+    - tracecontext
+    - baggage
+  sampler:
+    type: parentbased_traceidratio
+    argument: "1"
