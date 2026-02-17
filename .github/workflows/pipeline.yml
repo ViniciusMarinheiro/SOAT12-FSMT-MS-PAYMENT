@@ -1,0 +1,122 @@
+name: NestJS CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  # PREENCHA COM SEUS DADOS REAIS AQUI
+  ACR_NAME: "soat12acr"           
+  RESOURCE_GROUP: "SOAT12-FSMT-RG"
+  CLUSTER_NAME: "SOAT12-FSMT-AKS" 
+
+jobs:
+  # ========================================================
+  # ESTÁGIO 1: CI & QUALIDADE (Build, Lint e Testes)
+  # ========================================================
+  ci-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Lint Code
+        run: npm run lint
+
+      # Requisito PDF: Testes automatizados e cobertura (min 80%)
+      - name: Run Unit Tests with Coverage
+        run: npm run test:cov
+      
+      # [OPCIONAL] Requisito PDF: Validação de qualidade via Sonar
+      # Descomente se tiver o SonarCloud configurado
+      # - name: SonarCloud Scan
+      #   uses: SonarSource/sonarcloud-github-action@master
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  # ========================================================
+  # ESTÁGIO 2: BUILD E PUSH (Docker -> ACR)
+  # ========================================================
+  build-push:
+    needs: ci-quality
+    runs-on: ubuntu-latest
+    # Deploy apenas no push da main (evita sujar o registro com PRs)
+    if: github.event_name == 'push'
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Login to ACR
+        run: az acr login --name ${{ env.ACR_NAME }}
+
+      - name: Build and Push Docker Image
+        run: |
+          # Pega o nome do repo (ex: SOAT12-FSMT-MS-PAYMENT)
+          IMAGE_NAME=${{ github.event.repository.name }}
+          ACR_URL="${{ env.ACR_NAME }}.azurecr.io"
+          
+          # Cria tags com SHA (para rollback preciso) e latest
+          docker build . -t $ACR_URL/$IMAGE_NAME:${{ github.sha }}
+          docker build . -t $ACR_URL/$IMAGE_NAME:latest
+          
+          docker push $ACR_URL/$IMAGE_NAME:${{ github.sha }}
+          docker push $ACR_URL/$IMAGE_NAME:latest
+
+  # ========================================================
+  # ESTÁGIO 3: DEPLOY NO KUBERNETES (AKS)
+  # ========================================================
+  deploy-aks:
+    needs: build-push
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup Kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Get AKS Credentials
+        run: az aks get-credentials --resource-group ${{ env.RESOURCE_GROUP }} --name ${{ env.CLUSTER_NAME }}
+
+      - name: Update Kubernetes Manifests and Deploy
+        run: |
+          cd k8s
+          
+          # Monta a URL completa da imagem recém-criada
+          IMAGE_FULL_PATH="${{ env.ACR_NAME }}.azurecr.io/${{ github.event.repository.name }}:${{ github.sha }}"
+          
+          # Substitui o placeholder no deployment.yaml pela imagem real
+          sed -i "s|IMAGE_PLACEHOLDER|$IMAGE_FULL_PATH|g" deployment.yaml
+          
+          # Aplica os manifestos (Deployment, Service, etc)
+          kubectl apply -f .

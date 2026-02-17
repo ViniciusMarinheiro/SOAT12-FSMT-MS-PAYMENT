@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-service
+  labels:
+    app: payment-service
+spec:
+  replicas: 1 # Mantido em 1 para economizar recursos no Node único
+  selector:
+    matchLabels:
+      app: payment-service
+  template:
+    metadata:
+      labels:
+        app: payment-service
+    spec:
+      containers:
+        - name: payment-service
+          # O Pipeline substituirá IMAGE_PLACEHOLDER pela imagem real do ACR
+          image: IMAGE_PLACEHOLDER
+          ports:
+            - containerPort: 3000
+          env:
+            - name: PORT
+              value: "3000"
+            # Conexão com o Banco Relacional (Postgres)
+            # DICA: Crie um database chamado 'payment_db' no seu servidor Postgres
+            - name: DATABASE_URL
+              value: "postgresql://postgres:SUA_SENHA_AQUI@HOST_DO_SEU_POSTGRES_AZURE:5432/payment_db"
+            # Conexão com o RabbitMQ interno do cluster
+            - name: RABBITMQ_URL
+              value: "amqp://guest:guest@rabbitmq:5672"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment-service
+spec:
+  type: ClusterIP # Apenas comunicação interna
+  selector:
+    app: payment-service
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3000
