@@ -10,6 +10,16 @@ export function sanitizeSensitiveData(data: any): any {
     'authorization',
     'auth',
   ];
+
+  // Handle arrays separately
+  if (Array.isArray(data)) {
+    return data.map((item) =>
+      typeof item === 'object' && item !== null
+        ? sanitizeSensitiveData(item)
+        : item,
+    );
+  }
+
   const sanitized = { ...data };
 
   for (const key in sanitized) {

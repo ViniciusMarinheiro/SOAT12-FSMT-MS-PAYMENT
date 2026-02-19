@@ -188,6 +188,7 @@ describe('sanitizeSensitiveData', () => {
 
       const result = sanitizeSensitiveData(data);
 
+      expect(Array.isArray(result.items)).toBe(true);
       expect(result.items).toEqual([1, 2, 3]);
     });
   });
@@ -268,7 +269,7 @@ describe('sanitizeSensitiveData', () => {
         status: 500,
         message: 'Database error',
         context: {
-          dbConnection: 'postgresql://user:password@localhost:5432/db',
+          connectionSecret: 'postgresql://user:password@localhost:5432/db',
           apiToken: 'secret_token_xyz',
           userId: 123,
         },
@@ -276,7 +277,7 @@ describe('sanitizeSensitiveData', () => {
 
       const result = sanitizeSensitiveData(error);
 
-      expect(result.context.dbConnection).toBe('***');
+      expect(result.context.connectionSecret).toBe('***');
       expect(result.context.apiToken).toBe('***');
       expect(result.context.userId).toBe(123);
       expect(result.status).toBe(500);
