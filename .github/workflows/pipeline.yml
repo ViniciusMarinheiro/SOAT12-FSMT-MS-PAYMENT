@@ -1,4 +1,4 @@
-﻿name: CI/CD Pipeline - oficina-payment
+name: CI/CD Pipeline - oficina-payment
 
 on:
   push:
@@ -17,7 +17,7 @@ env:
 jobs:
   # --- 1. VALIDATE ---
   validate:
-    name: 🔍 Validar
+    name: ?? Validar
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,11 +25,11 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-      - run: npm ci
+      - run: npm install
 
   # --- 2. TESTS (Simplificado para rodar em todos) ---
   unit-tests:
-    name: 🧪 Testes
+    name: ?? Testes
     runs-on: ubuntu-latest
     needs: validate
     steps:
@@ -38,13 +38,13 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-      - run: npm ci
-      # Roda testes se houver script, senão apenas echo (evita falha se não tiver testes ainda)
+      - run: npm install
+      # Roda testes se houver script, sen�o apenas echo (evita falha se n�o tiver testes ainda)
       - run: npm run test:cov --if-present
 
   # --- 3. SECURITY ---
   security:
-    name: 🔒 Segurança
+    name: ?? Seguran�a
     runs-on: ubuntu-latest
     needs: validate
     steps:
@@ -53,12 +53,12 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-      - run: npm ci
+      - run: npm install
       - run: npm audit --audit-level=high || true
 
   # --- 4. BUILD & DEPLOY ---
   build-and-deploy:
-    name: 🏗️ Build e Deploy AKS
+    name: ??? Build e Deploy AKS
     runs-on: ubuntu-latest
     needs: [unit-tests, security]
     if: github.event_name == 'push'
@@ -82,7 +82,7 @@ jobs:
           resource-group: ${{ env.RESOURCE_GROUP }}
           cluster-name: ${{ env.CLUSTER_NAME }}
 
-      # --- INSTALAÇÃO NEW RELIC (COM RETRY DOS PRINTS) ---
+      # --- INSTALA��O NEW RELIC (COM RETRY DOS PRINTS) ---
       - name: Install Helm
         uses: azure/setup-helm@v3
         with:
@@ -104,13 +104,13 @@ jobs:
           echo "Waiting for New Relic CRDs..."
           for i in {1..60}; do
             if kubectl get crd instrumentations.newrelic.com 2>/dev/null; then
-              echo "✅ CRD found!"
+              echo "? CRD found!"
               exit 0
             fi
             echo "Attempt $i/60: Waiting..."
             sleep 5
           done
-          echo "❌ CRD not found"
+          echo "? CRD not found"
           exit 1
 
       # --- DEPLOY DOS MANIFESTOS ---
@@ -135,6 +135,7 @@ jobs:
           echo "=== DESCRIBE ==="
           kubectl describe pods -l app=oficina-payment || true
 
-      # --- APLICA INSTRUMENTAÇÃO ---
+      # --- APLICA INSTRUMENTA��O ---
       - name: Apply Instrumentation
         run: kubectl apply -f k8s/instrumentation.yaml
+
