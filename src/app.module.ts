@@ -5,9 +5,7 @@ import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
 import { CustomLogger } from './common/log/custom.logger';
 import { PaymentController } from './payments/payment.controller';
 import { PaymentService } from './payments/payment.service';
-
-const isTest = process.env.NODE_ENV === 'test';
-const isDevelopment = process.env.NODE_ENV !== 'production' && !isTest;
+import { getAppConfig } from './config/app.config';
 
 @Module({
   imports: [
@@ -34,7 +32,7 @@ const isDevelopment = process.env.NODE_ENV !== 'production' && !isTest;
           }
           return 'info';
         },
-        ...(isDevelopment && {
+        ...((getAppConfig().isDevelopment) && {
           transport: {
             target: 'pino-pretty',
             options: {

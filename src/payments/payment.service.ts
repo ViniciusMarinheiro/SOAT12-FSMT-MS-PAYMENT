@@ -4,6 +4,7 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import type { CreatePaymentDto } from './dto/create-payment.dto';
+import { getAppConfig } from '../config/app.config';
 
 type MercadoPagoResponse = Record<string, unknown>;
 
@@ -12,7 +13,8 @@ export class PaymentService {
   async createPayment(dto: CreatePaymentDto): Promise<MercadoPagoResponse> {
     this.validateCreatePayment(dto);
 
-    const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
+    const config = getAppConfig();
+    const accessToken = config.mercadoPago.accessToken;
     if (!accessToken) {
       throw new InternalServerErrorException(
         'Missing Mercado Pago access token',

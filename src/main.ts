@@ -3,12 +3,17 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { CustomLogger } from './common/log/custom.logger';
 
-async function bootstrap() {
+export async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     logger: ['error', 'warn', 'debug', 'log', 'verbose'],
   });
 
   app.useLogger(app.get(CustomLogger));
-  await app.listen(process.env.PORT ?? 3000);
+  const port = parseInt(process.env.PORT || '3000', 10);
+  await app.listen(port);
 }
-bootstrap();
+
+// Only run bootstrap if not in test environment
+if (process.env.NODE_ENV !== 'test') {
+  bootstrap();
+}
