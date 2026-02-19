@@ -3,6 +3,8 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
 import { CustomLogger } from './common/log/custom.logger';
+import { PaymentController } from './payments/payment.controller';
+import { PaymentService } from './payments/payment.service';
 
 const isTest = process.env.NODE_ENV === 'test';
 const isDevelopment = process.env.NODE_ENV !== 'production' && !isTest;
@@ -46,8 +48,8 @@ const isDevelopment = process.env.NODE_ENV !== 'production' && !isTest;
       },
     }),
   ],
-  controllers: [AppController],
-  providers: [AppService, CustomLogger],
+  controllers: [AppController, PaymentController],
+  providers: [AppService, CustomLogger, PaymentService],
   exports: [CustomLogger],
 })
 export class AppModule {}
