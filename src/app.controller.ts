@@ -16,4 +16,10 @@ export class AppController {
   health() {
     return { status: 'ok' };
   }
+
+  @Get('health/mercadopago')
+  @Public()
+  async healthMercadoPago() {
+    return this.appService.checkMercadoPagoConnection();
+  }
 }
