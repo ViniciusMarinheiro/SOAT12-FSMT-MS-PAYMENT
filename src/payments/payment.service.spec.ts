@@ -2,11 +2,14 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { PaymentService } from './payment.service';
 import type { CreatePaymentDto } from './dto/create-payment.dto';
+import { resetAppConfig } from '../config/app.config';
 
 describe('PaymentService', () => {
   let service: PaymentService;
 
   beforeEach(async () => {
+    resetAppConfig();
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [PaymentService],
     }).compile();
