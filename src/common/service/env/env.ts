@@ -11,6 +11,7 @@ export const envSchema = z
     JWT_EXPIRES_IN: z.string().optional().default('7d'),
     MERCADOPAGO_ACCESS_TOKEN: z.string().optional().default(''),
     MERCADOPAGO_PUBLIC_KEY: z.string().optional().default(''),
+    RABBITMQ_URL: z.string().optional(),
   })
   .transform((env) => ({
     ...env,

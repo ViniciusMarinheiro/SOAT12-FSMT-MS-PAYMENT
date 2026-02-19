@@ -5,6 +5,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { CustomLogger } from './common/log/custom.logger';
 import { EnvConfigService } from './common/service/env/env-config.service';
+import { RabbitMQSetupService } from './providers/rabbitmq/rabbitmq.setup.service';
 import helmet from 'helmet';
 
 export async function bootstrap() {
@@ -26,6 +27,20 @@ export async function bootstrap() {
   const envConfigService = app.get(EnvConfigService);
   const port = parseInt(envConfigService.get('PORT'), 10);
   const prefix = envConfigService.get('DOCUMENTATION_PREFIX');
+  const rabbitmqUrl = envConfigService.get('RABBITMQ_URL');
+
+  if (rabbitmqUrl) {
+    try {
+      const setup = app.get(RabbitMQSetupService);
+      await setup.createExchangesAndQueues(rabbitmqUrl);
+      logger.log('RabbitMQ exchanges e filas criadas');
+    } catch (err: unknown) {
+      logger.warn(
+        'RabbitMQ setup falhou, continuando',
+        err instanceof Error ? err.message : String(err),
+      );
+    }
+  }
 
   app.useGlobalPipes(new ValidationPipe({ transform: true }));
   app.setGlobalPrefix(prefix);

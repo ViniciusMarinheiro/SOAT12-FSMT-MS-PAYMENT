@@ -2,6 +2,7 @@ import { Body, Controller, Headers, Logger, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Public } from '@/common/decorators/public.decorator';
 import { CreatePaymentUseCase } from '../../application/use-cases/create-payment.use-case';
+import { HandlePaymentWebhookUseCase } from '../../application/use-cases/handle-payment-webhook.use-case';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 
 @ApiTags('payment')
@@ -10,7 +11,10 @@ import { CreatePaymentDto } from './dto/create-payment.dto';
 export class PaymentController {
   private readonly logger = new Logger(PaymentController.name);
 
-  constructor(private readonly createPaymentUseCase: CreatePaymentUseCase) {}
+  constructor(
+    private readonly createPaymentUseCase: CreatePaymentUseCase,
+    private readonly handlePaymentWebhookUseCase: HandlePaymentWebhookUseCase,
+  ) {}
 
   @Post()
   @Public()
@@ -27,10 +31,12 @@ export class PaymentController {
   @Public()
   @ApiOperation({
     summary: 'Webhook Mercado Pago',
-    description: 'Recebe notificações do Mercado Pago (payment.created, etc.).',
+    description:
+      'Recebe notificações do Mercado Pago. Em pagamento aprovado, notifica MS-ORDER via fila.',
   })
-  webhook(@Body() body: unknown, @Headers() headers: unknown) {
+  async webhook(@Body() body: unknown, @Headers() headers: unknown) {
     this.logger.log('Mercado Pago webhook received', { body, headers });
+    await this.handlePaymentWebhookUseCase.execute(body);
     return { status: 'ok' };
   }
 }

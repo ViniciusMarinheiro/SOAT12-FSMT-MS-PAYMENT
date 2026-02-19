@@ -48,4 +48,12 @@ export class CreatePaymentDto {
   @IsOptional()
   @IsEmail()
   payerEmail?: string;
+
+  @ApiPropertyOptional({
+    description: "ID da ordem de serviço (vinculado ao pagamento para webhook)",
+    example: 123,
+  })
+  @IsOptional()
+  @IsNumber()
+  workOrderId?: number;
 }

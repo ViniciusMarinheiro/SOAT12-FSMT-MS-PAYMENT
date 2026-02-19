@@ -35,6 +35,10 @@ export class CreatePaymentUseCase {
       payload.payer = { email: dto.payerEmail };
     }
 
+    if (dto.workOrderId != null) {
+      payload.external_reference = String(dto.workOrderId);
+    }
+
     const response = await fetch(
       "https://api.mercadopago.com/checkout/preferences",
       {
