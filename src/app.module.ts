@@ -1,38 +1,44 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
 import { CustomLogger } from './common/log/custom.logger';
-import { PaymentController } from './payments/payment.controller';
-import { PaymentService } from './payments/payment.service';
-import { getAppConfig } from './config/app.config';
+import { GlobalJwtAuthGuard } from './common/guards';
+import { EnvConfigModule } from './common/service/env/env-config.module';
+import { EnvConfigService } from './common/service/env/env-config.service';
+import { AuthModule } from './modules/auth/auth.module';
+import { PaymentModule } from './modules/payment/payment.module';
+import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
+
+const isTest = process.env.NODE_ENV === 'test';
+const isDevelopment = process.env.NODE_ENV !== 'production' && !isTest;
 
 @Module({
   imports: [
+    EnvConfigModule,
+    AuthModule,
+    PaymentModule,
     PinoLoggerModule.forRoot({
       pinoHttp: {
         level: 'trace',
         serializers: {
-          req: (req) => ({
+          req: (req: any) => ({
             id: req.id,
             method: req.method,
             url: req.url,
             query: req.query,
             params: req.params,
           }),
-          res: (res) => ({
+          res: (res: any) => ({
             statusCode: res.statusCode,
           }),
         },
-        customLogLevel: (req, res, err) => {
-          if (res.statusCode >= 500) {
-            return 'error';
-          } else if (res.statusCode >= 400) {
-            return 'warn';
-          }
+        customLogLevel: (req: any, res: any) => {
+          if (res.statusCode >= 500) return 'error';
+          if (res.statusCode >= 400) return 'warn';
           return 'info';
         },
-        ...((getAppConfig().isDevelopment) && {
+        ...(isDevelopment && {
           transport: {
             target: 'pino-pretty',
             options: {
@@ -46,8 +52,16 @@ import { getAppConfig } from './config/app.config';
       },
     }),
   ],
-  controllers: [AppController, PaymentController],
-  providers: [AppService, CustomLogger, PaymentService],
-  exports: [CustomLogger],
+  controllers: [AppController],
+  providers: [
+    AppService,
+    CustomLogger,
+    EnvConfigService,
+    {
+      provide: APP_GUARD,
+      useClass: GlobalJwtAuthGuard,
+    },
+  ],
+  exports: [EnvConfigService, CustomLogger],
 })
 export class AppModule {}

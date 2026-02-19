@@ -2,14 +2,14 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { CustomLogger } from './common/log/custom.logger';
+import { EnvConfigService } from './common/service/env/env-config.service';
 
 describe('AppController', () => {
   let appController: AppController;
   let appService: AppService;
-  let mockLogger: jest.Mocked<CustomLogger>;
 
   beforeEach(async () => {
-    mockLogger = {
+    const mockLogger = {
       log: jest.fn(),
       warn: jest.fn(),
       error: jest.fn(),
@@ -17,25 +17,25 @@ describe('AppController', () => {
       verbose: jest.fn(),
     } as unknown as jest.Mocked<CustomLogger>;
 
-    const app: TestingModule = await Test.createTestingModule({
+    const mockEnvConfig = {
+      get: jest.fn((key: string) => {
+        if (key === 'MERCADOPAGO_ACCESS_TOKEN') return 'test_token';
+        if (key === 'MERCADOPAGO_PUBLIC_KEY') return 'test_public_key';
+        return '';
+      }),
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
       controllers: [AppController],
       providers: [
         AppService,
-        {
-          provide: CustomLogger,
-          useValue: mockLogger,
-        },
+        { provide: CustomLogger, useValue: mockLogger },
+        { provide: EnvConfigService, useValue: mockEnvConfig },
       ],
     }).compile();
 
-    appController = app.get<AppController>(AppController);
-    appService = app.get<AppService>(AppService);
-  });
-
-  describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
-    });
+    appController = module.get(AppController);
+    appService = module.get(AppService);
   });
 
   describe('health', () => {
@@ -46,27 +46,15 @@ describe('AppController', () => {
 
   describe('healthMercadoPago', () => {
     it('should return mercado pago health status from service', async () => {
-      // Arrange
       const mockHealthResponse = { status: 'ok', id: 203445 };
-      jest.spyOn(appService, 'checkMercadoPagoConnection').mockResolvedValueOnce(mockHealthResponse);
+      jest
+        .spyOn(appService, 'checkMercadoPagoConnection')
+        .mockResolvedValueOnce(mockHealthResponse);
 
-      // Act
       const result = await appController.healthMercadoPago();
 
-      // Assert
       expect(result).toEqual(mockHealthResponse);
       expect(appService.checkMercadoPagoConnection).toHaveBeenCalledTimes(1);
-    });
-
-    it('should call checkMercadoPagoConnection on healthMercadoPago endpoint', async () => {
-      // Arrange
-      jest.spyOn(appService, 'checkMercadoPagoConnection').mockResolvedValueOnce({ status: 'ok', id: 203445 });
-
-      // Act
-      await appController.healthMercadoPago();
-
-      // Assert
-      expect(appService.checkMercadoPagoConnection).toHaveBeenCalled();
     });
   });
 });

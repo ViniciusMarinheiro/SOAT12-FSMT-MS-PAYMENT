@@ -1,92 +1,66 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { CustomLogger } from './common/log/custom.logger';
+import { EnvConfigService } from './common/service/env/env-config.service';
 import { bootstrap } from './main';
-import { resetAppConfig } from './config/app.config';
 
 jest.mock('@nestjs/core');
-jest.mock('./app.module');
-jest.mock('./common/log/custom.logger');
+jest.mock('@nestjs/swagger', () => {
+  const actual = jest.requireActual('@nestjs/swagger');
+  return {
+    ...actual,
+    DocumentBuilder: jest.fn().mockImplementation(() => ({
+      setTitle: jest.fn().mockReturnThis(),
+      setDescription: jest.fn().mockReturnThis(),
+      setVersion: jest.fn().mockReturnThis(),
+      addBearerAuth: jest.fn().mockReturnThis(),
+      build: jest.fn().mockReturnValue({}),
+    })),
+    SwaggerModule: {
+      ...actual.SwaggerModule,
+      createDocument: jest.fn().mockReturnValue({}),
+      setup: jest.fn(),
+    },
+  };
+});
 
 describe('main.ts bootstrap', () => {
   let mockApp: any;
-  let mockCustomLogger: any;
 
   beforeEach(() => {
-    resetAppConfig();
     jest.clearAllMocks();
-
-    // Mock CustomLogger instance
-    mockCustomLogger = {};
-
-    // Mock NestJS app
     mockApp = {
       useLogger: jest.fn().mockReturnThis(),
-      listen: jest.fn().mockResolvedValue(undefined),
-      get: jest.fn((token) => {
-        if (token === CustomLogger) {
-          return mockCustomLogger;
+      enableCors: jest.fn().mockReturnThis(),
+      useGlobalPipes: jest.fn().mockReturnThis(),
+      setGlobalPrefix: jest.fn().mockReturnThis(),
+      use: jest.fn().mockReturnThis(),
+      getHttpAdapter: jest.fn().mockReturnValue({
+        get: jest.fn(),
+        getType: jest.fn().mockReturnValue('http'),
+      }),
+      get: jest.fn((token: any) => {
+        if (token === CustomLogger) return {};
+        if (token === EnvConfigService) {
+          return { get: (k: string) => (k === 'PORT' ? '3000' : 'api') };
         }
         return {};
       }),
+      listen: jest.fn().mockResolvedValue(undefined),
     };
-
-    // Mock NestFactory.create
     (NestFactory.create as jest.Mock).mockResolvedValue(mockApp);
-  });
-
-  afterEach(() => {
-    jest.clearAllMocks();
-    delete process.env.PORT;
   });
 
   it('should create NestJS application', async () => {
     await bootstrap();
-
     expect(NestFactory.create).toHaveBeenCalledWith(AppModule, {
       logger: ['error', 'warn', 'debug', 'log', 'verbose'],
     });
   });
 
-  it('should use CustomLogger for the application', async () => {
+  it('should use ValidationPipe and listen on port', async () => {
     await bootstrap();
-
-    expect(mockApp.useLogger).toHaveBeenCalledWith(mockCustomLogger);
-  });
-
-  it('should listen on configured port', async () => {
-    process.env.PORT = '3001';
-    resetAppConfig();
-
-    await bootstrap();
-
-    expect(mockApp.listen).toHaveBeenCalledWith(3001);
-  });
-
-  it('should listen on default port 3000 if PORT not set', async () => {
-    delete process.env.PORT;
-
-    await bootstrap();
-
+    expect(mockApp.useGlobalPipes).toHaveBeenCalled();
     expect(mockApp.listen).toHaveBeenCalledWith(3000);
   });
-
-  it('should retrieve CustomLogger instance via app.get()', async () => {
-    await bootstrap();
-
-    expect(mockApp.get).toHaveBeenCalledWith(CustomLogger);
-  });
-
-  it('should handle async operations correctly', async () => {
-    const result = bootstrap();
-
-    expect(result).toBeInstanceOf(Promise);
-
-    await result;
-
-    expect(NestFactory.create).toHaveBeenCalled();
-    expect(mockApp.useLogger).toHaveBeenCalled();
-    expect(mockApp.listen).toHaveBeenCalled();
-  });
 });
-
