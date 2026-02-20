@@ -1,0 +1,68 @@
+version: "3.8"
+
+services:
+  ms-payment:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ms-payment
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DOCUMENTATION_PREFIX=api/v1/payments
+      - JWT_SECRET=508e703c81a194c84a9895bd04362f504b33d8366a2f371cc0d346074fa6e7697c8f2e9d2df38ac8edb86f4935a45037053f16821d1667d6c3d8afaf082f366f
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
+      - RABBITMQ_CONSUMER_MAX_RETRIES=3
+      - RABBITMQ_CONSUMER_RETRY_DELAY_MS=1000
+      - DLQ_REPUBLISH_TO_MAIN=false
+      - MERCADOPAGO_ACCESS_TOKEN=${MERCADOPAGO_ACCESS_TOKEN:-}
+      - NEW_RELIC_NO_CONFIG_FILE=true
+      - NEW_RELIC_DISTRIBUTED_TRACING_ENABLED=true
+      - NEW_RELIC_LOG=stdout
+      - NEW_RELIC_APPLICATION_LOGGING_ENABLED=true
+      - NEW_RELIC_APPLICATION_LOGGING_FORWARDING_ENABLED=true
+      - NEW_RELIC_APPLICATION_LOGGING_LOCAL_DECORATING_ENABLED=true
+      - NEW_RELIC_AI_MONITORING_ENABLED=true
+      - NEW_RELIC_CUSTOM_INSIGHTS_EVENTS_MAX_SAMPLES_STORED=100000
+      - NEW_RELIC_SPAN_EVENTS_MAX_SAMPLES_STORED=100000
+      - NEW_RELIC_APP_NAME=12_soat_payment
+      - NEW_RELIC_LICENSE_KEY=0b03617db38d9d22049c348c7def8658FFFFNRAL
+    ports:
+      - "3001:3001"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  newrelic-infra:
+    image: newrelic/infrastructure:latest
+    privileged: true
+    network_mode: host
+    environment:
+      NRIA_LICENSE_KEY: 0b03617db38d9d22049c348c7def8658FFFFNRAL
+      NRIA_DISPLAY_NAME: docker-local
+    volumes:
+      - /:/host:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: payment-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  rabbitmq_data:
+    driver: local
