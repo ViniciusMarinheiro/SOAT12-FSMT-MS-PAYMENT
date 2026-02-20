@@ -1,4 +1,4 @@
-name: CI/CD Pipeline - oficina-payment
+Ôªøname: CI/CD Pipeline - oficina-payment
 
 on:
   push:
@@ -15,9 +15,8 @@ env:
   NEW_RELIC_LICENSE_KEY: '0b03617db38d9d22049c348c7def8658FFFFNRAL'
 
 jobs:
-  # --- 1. VALIDATE ---
   validate:
-    name: ?? Validar
+    name: üîç Validar
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,9 +26,8 @@ jobs:
           cache: 'npm'
       - run: npm install
 
-  # --- 2. TESTS (Simplificado para rodar em todos) ---
   unit-tests:
-    name: ?? Testes
+    name: üß™ Testes
     runs-on: ubuntu-latest
     needs: validate
     steps:
@@ -39,12 +37,10 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
       - run: npm install
-      # Roda testes se houver script, sen„o apenas echo (evita falha se n„o tiver testes ainda)
       - run: npm run test:cov --if-present
 
-  # --- 3. SECURITY ---
   security:
-    name: ?? SeguranÁa
+    name: üîí Seguran√ßa
     runs-on: ubuntu-latest
     needs: validate
     steps:
@@ -56,9 +52,8 @@ jobs:
       - run: npm install
       - run: npm audit --audit-level=high || true
 
-  # --- 4. BUILD & DEPLOY ---
   build-and-deploy:
-    name: ??? Build e Deploy AKS
+    name: üèóÔ∏è Build e Deploy AKS
     runs-on: ubuntu-latest
     needs: [unit-tests, security]
     if: github.event_name == 'push'
@@ -76,15 +71,9 @@ jobs:
           docker build -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} .
           docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
-      - name: Set AKS Context
-        uses: azure/aks-set-context@v3
-        with:
-          resource-group: ${{ env.RESOURCE_GROUP }}
-          cluster-name: ${{ env.CLUSTER_NAME }}
-          admin: 'true'
-          use-kubelogin: 'true'
+      - name: Get AKS Credentials (Fix)
+        run: az aks get-credentials --resource-group ${{ env.RESOURCE_GROUP }} --name ${{ env.CLUSTER_NAME }} --admin --overwrite-existing
 
-      # --- INSTALA«√O NEW RELIC (COM RETRY DOS PRINTS) ---
       - name: Install Helm
         uses: azure/setup-helm@v3
         with:
@@ -106,16 +95,15 @@ jobs:
           echo "Waiting for New Relic CRDs..."
           for i in {1..60}; do
             if kubectl get crd instrumentations.newrelic.com 2>/dev/null; then
-              echo "? CRD found!"
+              echo "‚úÖ CRD found!"
               exit 0
             fi
             echo "Attempt $i/60: Waiting..."
             sleep 5
           done
-          echo "? CRD not found"
+          echo "‚ùå CRD not found"
           exit 1
 
-      # --- DEPLOY DOS MANIFESTOS ---
       - name: Deploy to AKS
         uses: azure/k8s-deploy@v4
         with:
@@ -126,7 +114,6 @@ jobs:
           images: |
             ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
-      # --- LOGS EM CASO DE FALHA (DOS PRINTS) ---
       - name: Debug on Failure
         if: failure()
         run: |
@@ -137,8 +124,5 @@ jobs:
           echo "=== DESCRIBE ==="
           kubectl describe pods -l app=oficina-payment || true
 
-      # --- APLICA INSTRUMENTA«√O ---
       - name: Apply Instrumentation
         run: kubectl apply -f k8s/instrumentation.yaml
-
-
