@@ -10,8 +10,8 @@ env:
   NODE_VERSION: '18'
   ACR_NAME: acrfsmt
   IMAGE_NAME: oficina-payment
-  RESOURCE_GROUP: rg-fsmt-soat12
-  CLUSTER_NAME: aks-fsmt
+  RESOURCE_GROUP: SOAT12-FSMT-RG
+  CLUSTER_NAME: SOAT12-FSMT-AKS
   NEW_RELIC_LICENSE_KEY: '0b03617db38d9d22049c348c7def8658FFFFNRAL'
 
 jobs:
@@ -81,6 +81,8 @@ jobs:
         with:
           resource-group: ${{ env.RESOURCE_GROUP }}
           cluster-name: ${{ env.CLUSTER_NAME }}
+          admin: 'true'
+          use-kubelogin: 'true'
 
       # --- INSTALAÇÃO NEW RELIC (COM RETRY DOS PRINTS) ---
       - name: Install Helm
@@ -138,4 +140,5 @@ jobs:
       # --- APLICA INSTRUMENTAÇÃO ---
       - name: Apply Instrumentation
         run: kubectl apply -f k8s/instrumentation.yaml
+
 
