@@ -9,6 +9,7 @@ export interface PaymentProcessedPayload {
   paymentId: string;
   status: string;
   init_point?: string;
+  payerEmail?: string;
   error?: string;
   debug?: unknown;
 }

@@ -25,8 +25,10 @@ export class RabbitMQPaymentController {
     private readonly envConfigService: EnvConfigService,
   ) {
     this.maxRetries =
-      parseInt(this.envConfigService.get('RABBITMQ_CONSUMER_MAX_RETRIES'), 10) ||
-      3;
+      parseInt(
+        this.envConfigService.get('RABBITMQ_CONSUMER_MAX_RETRIES'),
+        10,
+      ) || 3;
     this.retryDelayMs =
       parseInt(
         this.envConfigService.get('RABBITMQ_CONSUMER_RETRY_DELAY_MS'),
@@ -55,16 +57,16 @@ export class RabbitMQPaymentController {
     for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
       try {
         // Executar use case de criação de pagamento
-        const paymentResult =
-          await this.createPaymentUseCase.execute(data);
+        const paymentResult = await this.createPaymentUseCase.execute(data);
 
-        // Publicar resultado na fila de pagamentos processados
+        // Publicar resultado na fila de pagamentos processados (ORDER consome e envia email com link)
         const paymentId = (paymentResult.id as string) || 'unknown';
         await this.paymentProcessedQueue.publish({
           workOrderId: data.workOrderId,
           paymentId,
           status: 'created',
           init_point: paymentResult.init_point as string,
+          payerEmail: data.payerEmail,
           debug: paymentResult,
         });
         this.logger.log(
@@ -94,6 +96,7 @@ export class RabbitMQPaymentController {
               workOrderId: data.workOrderId,
               paymentId: 'failed',
               status: 'error',
+              payerEmail: data.payerEmail,
               error: (error as Error)?.message || 'Erro desconhecido',
               debug: {
                 attempt,

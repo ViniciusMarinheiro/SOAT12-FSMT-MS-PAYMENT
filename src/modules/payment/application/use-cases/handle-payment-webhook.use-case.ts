@@ -23,6 +23,13 @@ export class HandlePaymentWebhookUseCase {
     private readonly paymentApprovedQueue: PaymentApprovedQueueProvider,
   ) {}
 
+  /** Aceita type=payment (oficial) ou action que comece com "payment." (ex: payment.created) */
+  private isPaymentWebhook(payload: MercadoPagoWebhookBody): boolean {
+    if (payload.type === 'payment') return true;
+    const action = payload.action ?? '';
+    return typeof action === 'string' && action.startsWith('payment.');
+  }
+
   async execute(body: unknown): Promise<void> {
     const payload = body as MercadoPagoWebhookBody;
     if (!payload?.type && !payload?.action) {
@@ -30,9 +37,10 @@ export class HandlePaymentWebhookUseCase {
       return;
     }
 
-    const type = payload.type ?? payload.action;
-    if (type !== 'payment') {
-      this.logger.debug(`Webhook ignorado: type=${type}`);
+    if (!this.isPaymentWebhook(payload)) {
+      this.logger.debug(
+        `Webhook ignorado: type=${payload.type}, action=${payload.action}`,
+      );
       return;
     }
 
