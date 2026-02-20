@@ -4,46 +4,34 @@
 
 ```mermaid
 sequenceDiagram
-    participant Cliente as Cliente/MS-ORDER
-    participant HTTP as HTTP API
-    participant RabbitMQ as RabbitMQ<br/>message broker
-    participant PaymentService as Payment Service
-    participant MercadoPago as Mercado Pago API
-    participant Webhook as Webhook Receiver
+    participant ORDER as MS-ORDER
+    participant RabbitMQ as RabbitMQ
+    participant Payment as Payment Service
+    participant MP as Mercado Pago API
 
-    Note over Cliente,Webhook: Fluxo 1: Criar Pagamento via POST /payments
+    Note over ORDER,MP: Fluxo 1: Criar Pagamento via Fila
 
-    Cliente->>HTTP: POST /payments<br/>{workOrderId, title, quantity, unitPrice...}
-    HTTP->>PaymentService: CreatePaymentUseCase.execute()
-    PaymentService->>MercadoPago: POST /checkout/preferences<br/>(com external_reference=workOrderId)
-    MercadoPago-->>PaymentService: {id, init_point, ...}
-    PaymentService->>RabbitMQ: EMIT payment.v1.processed<br/>{paymentId, init_point, debug: fullResponse}
-    RabbitMQ->>Cliente: Retorna preferência MP<br/>com init_point para checkout
+    ORDER->>RabbitMQ: PUBLISH payment.v1.requested<br/>{workOrderId, title, quantity...}
+    RabbitMQ->>Payment: Consumir mensagem
+    Payment->>MP: POST /checkout/preferences
+    MP-->>Payment: {id, init_point, ...}
+    Payment->>RabbitMQ: EMIT payment.v1.processed<br/>{paymentId, init_point, debug}
+    RabbitMQ->>ORDER: ORDER consome resultado
+
+    Note over ORDER,MP: Fluxo 2: Webhook - Pagamento Aprovado
+
+    MP->>Payment: POST /webhook<br/>{type: payment, data: {id}}
+    Payment->>MP: GET /v1/payments/{id}
+    MP-->>Payment: {status: approved, external_reference...}
     
-    Note over Cliente,Webhook: Fluxo 2: Consumidor RabbitMQ aguardando payment.v1.requested
-
-    Cliente->>RabbitMQ: PUBLISH payment.v1.requested<br/>{workOrderId, title, quantity...}
-    RabbitMQ->>PaymentService: RabbitMQPaymentController.handlePaymentRequested()
-    PaymentService->>MercadoPago: POST /checkout/preferences
-    MercadoPago-->>PaymentService: {id, init_point, ...}
-    PaymentService->>RabbitMQ: EMIT payment.v1.processed<br/>{paymentId, init_point, debug}
-    RabbitMQ->>Cliente: Message ACK
-
-    Note over Cliente,Webhook: Fluxo 3: Webhook de Pagamento Aprovado
-
-    MercadoPago->>Webhook: POST /payments/webhook<br/>{type: payment, data: {id: paymentId}}
-    Webhook->>PaymentService: HandlePaymentWebhookUseCase.execute()
-    PaymentService->>MercadoPago: GET /v1/payments/{paymentId}
-    MercadoPago-->>PaymentService: {id, status: approved, external_reference...}
-    
-    alt Pagamento Aprovado
-        PaymentService->>RabbitMQ: EMIT payment.v1.approved<br/>{workOrderId, paymentId, status, debug, fullPayload}
-        RabbitMQ->>Cliente: MS-ORDER consome e processa
-    else Pagamento Não Aprovado
-        PaymentService->>PaymentService: Log e ignora webhook
+    alt Status = Approved
+        Payment->>RabbitMQ: EMIT payment.v1.approved<br/>{workOrderId, paymentId, debug}
+        RabbitMQ->>ORDER: ORDER consome aprovação
+    else Status ≠ Approved
+        Payment->>Payment: Log e ignora
     end
 
-    Webhook-->>MercadoPago: HTTP 200 {status: ok}
+    Payment-->>MP: HTTP 200 {status: ok}
 ```
 
 ## Estrutura das Filas RabbitMQ
