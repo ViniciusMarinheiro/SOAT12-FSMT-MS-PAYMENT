@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { CustomLogger } from './common/log/custom.logger';
 import { EnvConfigService } from './common/service/env/env-config.service';
+import { RabbitMQSetupService } from './providers/rabbitmq/rabbitmq.setup.service';
 import { bootstrap } from './main';
 
 jest.mock('@nestjs/core');
@@ -35,6 +36,8 @@ describe('main.ts bootstrap', () => {
       useGlobalPipes: jest.fn().mockReturnThis(),
       setGlobalPrefix: jest.fn().mockReturnThis(),
       use: jest.fn().mockReturnThis(),
+      connectMicroservice: jest.fn().mockReturnThis(),
+      startAllMicroservices: jest.fn().mockResolvedValue(undefined),
       getHttpAdapter: jest.fn().mockReturnValue({
         get: jest.fn(),
         getType: jest.fn().mockReturnValue('http'),
@@ -42,7 +45,19 @@ describe('main.ts bootstrap', () => {
       get: jest.fn((token: any) => {
         if (token === CustomLogger) return {};
         if (token === EnvConfigService) {
-          return { get: (k: string) => (k === 'PORT' ? '3000' : 'api') };
+          return {
+            get: (k: string) =>
+              k === 'PORT'
+                ? '3000'
+                : k === 'RABBITMQ_URL'
+                  ? 'amqp://localhost'
+                  : 'api',
+          };
+        }
+        if (token === RabbitMQSetupService) {
+          return {
+            createExchangesAndQueues: jest.fn().mockResolvedValue(undefined),
+          };
         }
         return {};
       }),
