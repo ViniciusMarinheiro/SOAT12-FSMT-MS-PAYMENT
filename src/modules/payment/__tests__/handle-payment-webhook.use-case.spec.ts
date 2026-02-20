@@ -53,17 +53,19 @@ describe("HandlePaymentWebhookUseCase", () => {
   });
 
   it("should publish approved payment", async () => {
+    const webhookPayload = { type: "payment", data: { id: "123" } };
+    const paymentResponse = {
+      id: 123,
+      status: "approved",
+      external_reference: "10",
+    };
+
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: () =>
-        Promise.resolve({
-          id: 123,
-          status: "approved",
-          external_reference: "10",
-        }),
+      json: () => Promise.resolve(paymentResponse),
     });
 
-    await useCase.execute({ type: "payment", data: { id: "123" } });
+    await useCase.execute(webhookPayload);
 
     expect(envConfig.get).toHaveBeenCalledWith("MERCADOPAGO_ACCESS_TOKEN");
     expect(global.fetch).toHaveBeenCalledWith(
@@ -76,6 +78,10 @@ describe("HandlePaymentWebhookUseCase", () => {
       workOrderId: 10,
       paymentId: "123",
       status: "approved",
+      fullPayload: {
+        webhook: webhookPayload,
+        payment: paymentResponse,
+      },
     });
   });
 

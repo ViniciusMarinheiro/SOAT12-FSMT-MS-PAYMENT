@@ -8,6 +8,8 @@ export interface PaymentApprovedPayload {
   workOrderId: number;
   paymentId: string;
   status: string;
+  fullPayload?: unknown;
+  debug?: unknown;
 }
 
 @Injectable()

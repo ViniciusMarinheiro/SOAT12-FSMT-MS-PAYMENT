@@ -59,12 +59,17 @@ export class RabbitMQPaymentController {
           await this.createPaymentUseCase.execute(data);
 
         // Publicar resultado na fila de pagamentos processados
+        const paymentId = (paymentResult.id as string) || 'unknown';
         await this.paymentProcessedQueue.publish({
           workOrderId: data.workOrderId,
-          paymentId: (paymentResult.id as string) || 'unknown',
+          paymentId,
           status: 'created',
           init_point: paymentResult.init_point as string,
+          debug: paymentResult,
         });
+        this.logger.log(
+          `Pagamento criado com sucesso: paymentId=${paymentId}, workOrderId=${data.workOrderId}`,
+        );
 
         // Fazer ACK da mensagem
         try {
@@ -90,6 +95,11 @@ export class RabbitMQPaymentController {
               paymentId: 'failed',
               status: 'error',
               error: (error as Error)?.message || 'Erro desconhecido',
+              debug: {
+                attempt,
+                maxRetries: this.maxRetries,
+                error: (error as Error)?.stack || String(error),
+              },
             });
           } catch (publishError: any) {
             this.logger.error('Erro ao publicar resultado de erro', {

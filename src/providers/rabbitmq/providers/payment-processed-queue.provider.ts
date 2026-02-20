@@ -10,6 +10,7 @@ export interface PaymentProcessedPayload {
   status: string;
   init_point?: string;
   error?: string;
+  debug?: unknown;
 }
 
 @Injectable()

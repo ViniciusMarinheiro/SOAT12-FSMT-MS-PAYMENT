@@ -51,10 +51,16 @@ describe("PaymentApprovedQueueProvider", () => {
     envConfigMock.get.mockReturnValue("amqp://localhost");
     clientMock.emit.mockReturnValue(of(true));
 
+    const fullPayload = {
+      webhook: { type: "payment", data: { id: "123" } },
+      payment: { id: 123, status: "approved", external_reference: "10" },
+    };
+
     await provider.publish({
       workOrderId: 10,
       paymentId: "123",
       status: "approved",
+      fullPayload,
     });
 
     expect(clientMock.emit).toHaveBeenCalledWith(
@@ -63,6 +69,7 @@ describe("PaymentApprovedQueueProvider", () => {
         workOrderId: 10,
         paymentId: "123",
         status: "approved",
+        fullPayload,
       },
     );
   });

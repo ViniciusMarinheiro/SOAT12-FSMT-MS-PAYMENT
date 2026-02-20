@@ -79,6 +79,14 @@ export class HandlePaymentWebhookUseCase {
         workOrderId,
         paymentId: String(payment.id),
         status: payment.status ?? 'approved',
+        fullPayload: {
+          webhook: payload,
+          payment,
+        },
+        debug: {
+          webhook: payload,
+          payment,
+        },
       });
       this.logger.log(
         `Webhook processado: payment ${paymentId} aprovado, workOrderId=${workOrderId} notificado`,
