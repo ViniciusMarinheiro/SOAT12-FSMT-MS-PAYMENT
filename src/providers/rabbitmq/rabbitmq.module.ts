@@ -4,13 +4,24 @@ import { RabbitMQSetupService } from "./rabbitmq.setup.service";
 import { getRabbitMQConfigs } from "./rabbitmq.config";
 import { RabbitMQService } from "./rabbitmq.service";
 import { PaymentApprovedQueueProvider } from "./providers/payment-approved-queue.provider";
+import { PaymentProcessedQueueProvider } from "./providers/payment-processed-queue.provider";
+import { RabbitMQPaymentController } from "./rabbitmq-payment.controller";
 
 @Module({
   imports: [
     EnvConfigModule,
     ...getRabbitMQConfigs().map((c) => RabbitMQService.registerClient(c)),
   ],
-  providers: [RabbitMQSetupService, PaymentApprovedQueueProvider],
-  exports: [RabbitMQSetupService, PaymentApprovedQueueProvider],
+  controllers: [RabbitMQPaymentController],
+  providers: [
+    RabbitMQSetupService,
+    PaymentApprovedQueueProvider,
+    PaymentProcessedQueueProvider,
+  ],
+  exports: [
+    RabbitMQSetupService,
+    PaymentApprovedQueueProvider,
+    PaymentProcessedQueueProvider,
+  ],
 })
 export class RabbitMQModule {}

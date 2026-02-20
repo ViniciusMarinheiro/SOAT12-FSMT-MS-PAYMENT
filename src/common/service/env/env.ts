@@ -12,6 +12,8 @@ export const envSchema = z
     MERCADOPAGO_ACCESS_TOKEN: z.string().optional().default(''),
     MERCADOPAGO_PUBLIC_KEY: z.string().optional().default(''),
     RABBITMQ_URL: z.string().optional(),
+    RABBITMQ_CONSUMER_MAX_RETRIES: z.string().optional().default('3'),
+    RABBITMQ_CONSUMER_RETRY_DELAY_MS: z.string().optional().default('1000'),
   })
   .transform((env) => ({
     ...env,
