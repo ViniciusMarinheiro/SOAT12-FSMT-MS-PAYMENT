@@ -8,6 +8,7 @@ import { EnvConfigModule } from './common/service/env/env-config.module';
 import { EnvConfigService } from './common/service/env/env-config.service';
 import { AuthModule } from './modules/auth/auth.module';
 import { PaymentModule } from './modules/payment/payment.module';
+import { RabbitMQModule } from './providers/rabbitmq/rabbitmq.module';
 import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
 
 const isTest = process.env.NODE_ENV === 'test';
@@ -18,6 +19,7 @@ const isDevelopment = process.env.NODE_ENV !== 'production' && !isTest;
     EnvConfigModule,
     AuthModule,
     PaymentModule,
+    RabbitMQModule,
     PinoLoggerModule.forRoot({
       pinoHttp: {
         level: 'trace',

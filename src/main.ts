@@ -1,11 +1,13 @@
 import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
+import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { CustomLogger } from './common/log/custom.logger';
 import { EnvConfigService } from './common/service/env/env-config.service';
 import { RabbitMQSetupService } from './providers/rabbitmq/rabbitmq.setup.service';
+import { getConsumerConfigs } from './providers/rabbitmq/rabbitmq.config';
 import helmet from 'helmet';
 
 export async function bootstrap() {
@@ -29,17 +31,45 @@ export async function bootstrap() {
   const prefix = envConfigService.get('DOCUMENTATION_PREFIX');
   const rabbitmqUrl = envConfigService.get('RABBITMQ_URL');
 
-  if (rabbitmqUrl) {
-    try {
-      const setup = app.get(RabbitMQSetupService);
-      await setup.createExchangesAndQueues(rabbitmqUrl);
-      logger.log('RabbitMQ exchanges e filas criadas');
-    } catch (err: unknown) {
-      logger.warn(
-        'RabbitMQ setup falhou, continuando',
-        err instanceof Error ? err.message : String(err),
-      );
+  if (!rabbitmqUrl) {
+    throw new Error('RABBITMQ_URL não configurada. Startup abortado.');
+  }
+
+  try {
+    const setup = app.get(RabbitMQSetupService);
+    await setup.createExchangesAndQueues(rabbitmqUrl);
+    logger.log('RabbitMQ exchanges e filas criadas');
+
+    for (const consumer of getConsumerConfigs()) {
+      app.connectMicroservice<MicroserviceOptions>({
+        transport: Transport.RMQ,
+        options: {
+          urls: [rabbitmqUrl],
+          queue: consumer.queue,
+          noAck: false,
+          queueOptions: {
+            durable: true,
+            arguments: {
+              'x-dead-letter-exchange':
+                consumer.deadLetterExchange || `${consumer.exchange}.dlq`,
+              'x-dead-letter-routing-key':
+                consumer.deadLetterRoutingKey || `${consumer.routingKey}.dlq`,
+            },
+          },
+        },
+      });
+
+      logger.log(`RabbitMQ consumer registrado para fila ${consumer.queue}`);
     }
+
+    await app.startAllMicroservices();
+    logger.log('RabbitMQ microservices iniciados');
+  } catch (err: unknown) {
+    logger.error(
+      'Falha ao iniciar consumidor RabbitMQ. Startup abortado.',
+      err instanceof Error ? err.stack : String(err),
+    );
+    throw err;
   }
 
   app.useGlobalPipes(new ValidationPipe({ transform: true }));

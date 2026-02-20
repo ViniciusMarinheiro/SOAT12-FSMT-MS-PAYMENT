@@ -32,9 +32,13 @@ export class RabbitMQPaymentController {
         this.envConfigService.get('RABBITMQ_CONSUMER_RETRY_DELAY_MS'),
         10,
       ) || 1000;
+
+    this.logger.log(
+      'Aplicação conectada ao RabbitMQ e ouvindo a fila payment.v1.requested',
+    );
   }
 
-  @EventPattern('payment.requested')
+  @EventPattern('payment.v1.requested')
   async handlePaymentRequested(
     @Payload() data: PaymentRequestPayload,
     @Ctx() context: RmqContext,

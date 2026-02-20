@@ -59,6 +59,10 @@ export class RabbitMQSetupService {
     await channel.bindQueue(config.queue, config.exchange!, config.routingKey);
 
     this.logger.log(
+      `Aplicação conectada ao RabbitMQ e ouvindo a fila ${config.queue}`,
+    );
+
+    this.logger.log(
       `Exchange e fila criadas: ${config.exchange}, ${config.queue}`,
     );
   }
