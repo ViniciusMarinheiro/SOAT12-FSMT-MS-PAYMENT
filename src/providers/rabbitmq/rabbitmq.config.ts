@@ -6,6 +6,14 @@ export interface RabbitMQConfig extends MessageConfig {
 }
 
 export const rabbitMQConfig: Record<string, RabbitMQConfig> = {
+  sagaPublish: {
+    exchange: 'saga.v1',
+    queue: 'saga.v1.payment.publish',
+    routingKey: 'saga.publish',
+    deadLetterExchange: 'saga.v1.dlq',
+    deadLetterRoutingKey: 'saga.publish.dlq',
+    isConsumer: false,
+  },
   // Fila para receber requisições de pagamento do ORDER
   paymentRequested: {
     exchange: "payment.v1",

@@ -2,11 +2,14 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { HandlePaymentWebhookUseCase } from '../application/use-cases/handle-payment-webhook.use-case';
 import { EnvConfigService } from '@/common/service/env/env-config.service';
 import { PaymentApprovedQueueProvider } from '@/providers/rabbitmq/providers/payment-approved-queue.provider';
+import { SagaEventsProvider } from '@/providers/rabbitmq/saga/saga-events.provider';
+import { SagaWorkOrderStep } from '@/providers/rabbitmq/saga/saga.types';
 
 describe('HandlePaymentWebhookUseCase', () => {
   let useCase: HandlePaymentWebhookUseCase;
   let envConfig: jest.Mocked<EnvConfigService>;
   let paymentApprovedQueue: jest.Mocked<PaymentApprovedQueueProvider>;
+  let sagaEvents: jest.Mocked<SagaEventsProvider>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -24,6 +27,12 @@ describe('HandlePaymentWebhookUseCase', () => {
             publish: jest.fn(),
           },
         },
+        {
+          provide: SagaEventsProvider,
+          useValue: {
+            publishCompensate: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -32,6 +41,7 @@ describe('HandlePaymentWebhookUseCase', () => {
     paymentApprovedQueue = module.get(
       PaymentApprovedQueueProvider,
     ) as jest.Mocked<PaymentApprovedQueueProvider>;
+    sagaEvents = module.get(SagaEventsProvider) as jest.Mocked<SagaEventsProvider>;
   });
 
   afterEach(() => {
@@ -50,6 +60,7 @@ describe('HandlePaymentWebhookUseCase', () => {
 
     expect(global.fetch).not.toHaveBeenCalled();
     expect(paymentApprovedQueue.publish).not.toHaveBeenCalled();
+    expect(sagaEvents.publishCompensate).not.toHaveBeenCalled();
   });
 
   it('should publish approved payment', async () => {
@@ -87,9 +98,10 @@ describe('HandlePaymentWebhookUseCase', () => {
         payment: paymentResponse,
       },
     });
+    expect(sagaEvents.publishCompensate).not.toHaveBeenCalled();
   });
 
-  it('should not publish when payment is not approved', async () => {
+  it('should not compensate when payment is pending', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: () =>
@@ -103,6 +115,35 @@ describe('HandlePaymentWebhookUseCase', () => {
     await useCase.execute({ type: 'payment', data: { id: '123' } });
 
     expect(paymentApprovedQueue.publish).not.toHaveBeenCalled();
+    expect(sagaEvents.publishCompensate).not.toHaveBeenCalled();
+  });
+
+  it('should publish compensate when payment failed', async () => {
+    const webhookPayload = { type: 'payment', data: { id: '123' } };
+    const paymentResponse = {
+      id: 123,
+      status: 'rejected',
+      external_reference: '10',
+    };
+
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(paymentResponse),
+    });
+
+    await useCase.execute(webhookPayload);
+
+    expect(paymentApprovedQueue.publish).not.toHaveBeenCalled();
+    expect(sagaEvents.publishCompensate).toHaveBeenCalledWith({
+      workOrderId: 10,
+      step: SagaWorkOrderStep.AWAITING_APPROVAL,
+      failedStep: SagaWorkOrderStep.AWAITING_APPROVAL,
+      reason: 'Pagamento com problema: rejected',
+      debug: {
+        webhook: webhookPayload,
+        mercadoPago: paymentResponse,
+      },
+    });
   });
 
   it('should ignore when payload has no type and no action', async () => {
@@ -110,6 +151,7 @@ describe('HandlePaymentWebhookUseCase', () => {
     await useCase.execute({});
     expect(global.fetch).not.toHaveBeenCalled();
     expect(paymentApprovedQueue.publish).not.toHaveBeenCalled();
+    expect(sagaEvents.publishCompensate).not.toHaveBeenCalled();
   });
 
   it('should accept action starting with payment.', async () => {
@@ -137,6 +179,7 @@ describe('HandlePaymentWebhookUseCase', () => {
     await useCase.execute({ type: 'payment' });
     expect(global.fetch).not.toHaveBeenCalled();
     expect(paymentApprovedQueue.publish).not.toHaveBeenCalled();
+    expect(sagaEvents.publishCompensate).not.toHaveBeenCalled();
   });
 
   it('should not publish when MERCADOPAGO_ACCESS_TOKEN is not set', async () => {
@@ -145,12 +188,14 @@ describe('HandlePaymentWebhookUseCase', () => {
     await useCase.execute({ type: 'payment', data: { id: '123' } });
     expect(global.fetch).not.toHaveBeenCalled();
     expect(paymentApprovedQueue.publish).not.toHaveBeenCalled();
+    expect(sagaEvents.publishCompensate).not.toHaveBeenCalled();
   });
 
   it('should not publish when fetch returns not ok', async () => {
     global.fetch = jest.fn().mockResolvedValue({ ok: false });
     await useCase.execute({ type: 'payment', data: { id: '123' } });
     expect(paymentApprovedQueue.publish).not.toHaveBeenCalled();
+    expect(sagaEvents.publishCompensate).not.toHaveBeenCalled();
   });
 
   it('should not publish when payment has no external_reference', async () => {
@@ -165,6 +210,7 @@ describe('HandlePaymentWebhookUseCase', () => {
     });
     await useCase.execute({ type: 'payment', data: { id: '123' } });
     expect(paymentApprovedQueue.publish).not.toHaveBeenCalled();
+    expect(sagaEvents.publishCompensate).not.toHaveBeenCalled();
   });
 
   it('should not publish when external_reference is invalid number', async () => {
@@ -179,6 +225,7 @@ describe('HandlePaymentWebhookUseCase', () => {
     });
     await useCase.execute({ type: 'payment', data: { id: '123' } });
     expect(paymentApprovedQueue.publish).not.toHaveBeenCalled();
+    expect(sagaEvents.publishCompensate).not.toHaveBeenCalled();
   });
 
   it('should rethrow when publish throws', async () => {
@@ -195,5 +242,6 @@ describe('HandlePaymentWebhookUseCase', () => {
     await expect(
       useCase.execute({ type: 'payment', data: { id: '123' } }),
     ).rejects.toThrow('Queue error');
+    expect(sagaEvents.publishCompensate).not.toHaveBeenCalled();
   });
 });

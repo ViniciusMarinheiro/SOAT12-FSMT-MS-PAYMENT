@@ -3,10 +3,13 @@ import { BadRequestException, InternalServerErrorException } from "@nestjs/commo
 import { CreatePaymentUseCase } from "../application/use-cases/create-payment.use-case";
 import { EnvConfigService } from "@/common/service/env/env-config.service";
 import { CreatePaymentDto } from "../infrastructure/web/dto/create-payment.dto";
+import { SagaEventsProvider } from '@/providers/rabbitmq/saga/saga-events.provider';
+import { SagaWorkOrderStep } from '@/providers/rabbitmq/saga/saga.types';
 
 describe("CreatePaymentUseCase", () => {
   let useCase: CreatePaymentUseCase;
   let envConfig: jest.Mocked<EnvConfigService>;
+  let sagaEvents: jest.Mocked<SagaEventsProvider>;
 
   beforeEach(async () => {
     const mockEnvConfig = {
@@ -20,11 +23,18 @@ describe("CreatePaymentUseCase", () => {
       providers: [
         CreatePaymentUseCase,
         { provide: EnvConfigService, useValue: mockEnvConfig },
+        {
+          provide: SagaEventsProvider,
+          useValue: {
+            publishCompensate: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
     useCase = module.get(CreatePaymentUseCase);
     envConfig = module.get(EnvConfigService) as jest.Mocked<EnvConfigService>;
+    sagaEvents = module.get(SagaEventsProvider) as jest.Mocked<SagaEventsProvider>;
   });
 
   afterEach(() => {
@@ -89,8 +99,17 @@ describe("CreatePaymentUseCase", () => {
         title: "Test",
         quantity: 1,
         unitPrice: 100,
+        workOrderId: 123,
       }),
     ).rejects.toThrow(BadRequestException);
+
+    expect(sagaEvents.publishCompensate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workOrderId: 123,
+        step: SagaWorkOrderStep.AWAITING_APPROVAL,
+        failedStep: SagaWorkOrderStep.AWAITING_APPROVAL,
+      }),
+    );
   });
 
   it("should include payer when payerEmail provided", async () => {
@@ -124,5 +143,23 @@ describe("CreatePaymentUseCase", () => {
 
     const callBody = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
     expect(callBody.items[0].currency_id).toBe("BRL");
+  });
+
+  it('should not publish compensation when workOrderId is not provided on failure', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: () => Promise.resolve({ error: 'invalid_request' }),
+    });
+
+    await expect(
+      useCase.execute({
+        title: 'Test',
+        quantity: 1,
+        unitPrice: 100,
+      }),
+    ).rejects.toThrow(BadRequestException);
+
+    expect(sagaEvents.publishCompensate).not.toHaveBeenCalled();
   });
 });

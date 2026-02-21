@@ -7,6 +7,7 @@ import { PaymentApprovedQueueProvider } from "./providers/payment-approved-queue
 import { PaymentProcessedQueueProvider } from "./providers/payment-processed-queue.provider";
 import { RabbitMQPaymentController } from "./rabbitmq-payment.controller";
 import { PaymentModule } from "@/modules/payment/payment.module";
+import { SagaEventsProvider } from './saga/saga-events.provider';
 
 @Module({
   imports: [
@@ -19,11 +20,13 @@ import { PaymentModule } from "@/modules/payment/payment.module";
     RabbitMQSetupService,
     PaymentApprovedQueueProvider,
     PaymentProcessedQueueProvider,
+    SagaEventsProvider,
   ],
   exports: [
     RabbitMQSetupService,
     PaymentApprovedQueueProvider,
     PaymentProcessedQueueProvider,
+    SagaEventsProvider,
   ],
 })
 export class RabbitMQModule {}

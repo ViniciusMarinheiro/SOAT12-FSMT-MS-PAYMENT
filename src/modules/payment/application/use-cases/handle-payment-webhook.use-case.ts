@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { EnvConfigService } from '@/common/service/env/env-config.service';
 import { PaymentApprovedQueueProvider } from '@/providers/rabbitmq/providers/payment-approved-queue.provider';
+import { SagaEventsProvider } from '@/providers/rabbitmq/saga/saga-events.provider';
+import { SagaWorkOrderStep } from '@/providers/rabbitmq/saga/saga.types';
 
 interface MercadoPagoWebhookBody {
   type?: string;
@@ -21,7 +23,14 @@ export class HandlePaymentWebhookUseCase {
   constructor(
     private readonly envConfig: EnvConfigService,
     private readonly paymentApprovedQueue: PaymentApprovedQueueProvider,
+    private readonly sagaEvents: SagaEventsProvider,
   ) {}
+
+  private isInProgressStatus(status: string): boolean {
+    return ['pending', 'in_process', 'in_mediation', 'authorized'].includes(
+      status,
+    );
+  }
 
   /** Aceita type=payment (oficial) ou action que comece com "payment." (ex: payment.created) */
   private isPaymentWebhook(payload: MercadoPagoWebhookBody): boolean {
@@ -64,22 +73,27 @@ export class HandlePaymentWebhookUseCase {
       if (!payment) return;
 
       const status = (payment.status ?? '').toLowerCase();
+      const workOrderId = this.getWorkOrderId(payment);
       if (status !== 'approved') {
-        this.logger.debug(`Pagamento ${paymentId} status=${status}, ignorado`);
+        if (this.isInProgressStatus(status)) {
+          this.logger.debug(
+            `Pagamento ${paymentId} status=${status}, aguardando evolução`,
+          );
+          return;
+        }
+
+        await this.publishCompensationForPaymentProblem({
+          paymentId,
+          status,
+          workOrderId,
+          payload,
+          payment,
+        });
         return;
       }
 
-      const workOrderIdStr = payment.external_reference;
-      if (!workOrderIdStr) {
-        this.logger.warn(`Pagamento ${paymentId} sem external_reference`);
-        return;
-      }
-
-      const workOrderId = parseInt(workOrderIdStr, 10);
-      if (Number.isNaN(workOrderId)) {
-        this.logger.warn(
-          `Pagamento ${paymentId} external_reference inválido: ${workOrderIdStr}`,
-        );
+      if (workOrderId == null) {
+        this.logger.warn(`Pagamento ${paymentId} sem external_reference válido`);
         return;
       }
 
@@ -126,5 +140,43 @@ export class HandlePaymentWebhookUseCase {
     }
     const data = (await response.json()) as MercadoPagoPaymentResponse;
     return data;
+  }
+
+  private getWorkOrderId(payment: MercadoPagoPaymentResponse): number | null {
+    const workOrderIdStr = payment.external_reference;
+    if (!workOrderIdStr) return null;
+
+    const workOrderId = parseInt(workOrderIdStr, 10);
+    return Number.isNaN(workOrderId) ? null : workOrderId;
+  }
+
+  private async publishCompensationForPaymentProblem(params: {
+    paymentId: string;
+    status: string;
+    workOrderId: number | null;
+    payload: MercadoPagoWebhookBody;
+    payment: MercadoPagoPaymentResponse;
+  }): Promise<void> {
+    if (params.workOrderId == null) {
+      this.logger.warn(
+        `Pagamento ${params.paymentId} com problema (${params.status}) sem external_reference válido; compensação não publicada`,
+      );
+      return;
+    }
+
+    await this.sagaEvents.publishCompensate({
+      workOrderId: params.workOrderId,
+      step: SagaWorkOrderStep.AWAITING_APPROVAL,
+      failedStep: SagaWorkOrderStep.AWAITING_APPROVAL,
+      reason: `Pagamento com problema: ${params.status || 'unknown'}`,
+      debug: {
+        webhook: params.payload,
+        mercadoPago: params.payment,
+      },
+    });
+
+    this.logger.warn(
+      `Compensação publicada para payment ${params.paymentId} status=${params.status} workOrderId=${params.workOrderId}`,
+    );
   }
 }
