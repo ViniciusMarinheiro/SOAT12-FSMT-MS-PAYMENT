@@ -73,14 +73,9 @@ jobs:
       - name: Setup Kubelogin
         uses: azure/use-kubelogin@v1
         with:
-<<<<<<< HEAD
           kubelogin-version: 'latest'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-=======
-          name: 'kubelogin'
-          version: 'latest'
->>>>>>> c388ff6698345a55f6754076106ace8be85bceab
 
       - name: Set AKS Context (Fix Kubelogin)
         uses: azure/aks-set-context@v3
