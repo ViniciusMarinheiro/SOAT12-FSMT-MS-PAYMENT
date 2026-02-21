@@ -5,7 +5,7 @@ metadata:
   labels:
     app: payment-service
 spec:
-  replicas: 1 
+  replicas: 1
   selector:
     matchLabels:
       app: payment-service
@@ -16,54 +16,70 @@ spec:
     spec:
       containers:
         - name: payment-service
-          image: soat12acr.azurecr.io/oficina-payment:latest 
+          image: soat12acr.azurecr.io/oficina-payment:latest
           ports:
             - containerPort: 3001
           env:
-            # 🟢 Variável do New Relic adicionada aqui
+            # ------------------------------------------------
+            # 0. OBSERVABILIDADE (NEW RELIC)
+            # ------------------------------------------------
+            - name: NEW_RELIC_LICENSE_KEY
+              value: 0b03617db38d9d22049c348c7def8658FFFFNRAL
+            - name: NEW_RELIC_NO_CONFIG_FILE
+              value: 'true'
+            - name: NEW_RELIC_DISTRIBUTED_TRACING_ENABLED
+              value: 'true'
+            - name: NEW_RELIC_LOG
+              value: stdout
+            - name: NEW_RELIC_AI_MONITORING_ENABLED
+              value: 'true'
+            - name: NEW_RELIC_CUSTOM_INSIGHTS_EVENTS_MAX_SAMPLES_STORED
+              value: 100k
+            - name: NEW_RELIC_SPAN_EVENTS_MAX_SAMPLES_STORED
+              value: 10k
             - name: NEW_RELIC_APP_NAME
-              value: "12_soat_payment"
+              value: 12_soat_payment
 
             # 1. Configurações da Aplicação
             - name: NODE_ENV
-              value: "production"
+              value: 'production'
             - name: PORT
-              value: "3001"
+              value: '3001'
             - name: DOCUMENTATION_PREFIX
-              value: "api/v1/payments"
+              value: 'api/v1/payments'
 
             # 2. Banco de Dados na Azure
             - name: DATABASE_URL
-              value: "postgresql://postgres:vD3WTW0gGmahJdjCfXHG@soat12-postgres-fsmt.postgres.database.azure.com:5432/payment_db"
+              value: 'postgresql://postgres:vD3WTW0gGmahJdjCfXHG@soat12-postgres-fsmt.postgres.database.azure.com:5432/payment_db'
             - name: DB_HOST
-              value: "soat12-postgres-fsmt.postgres.database.azure.com"
+              value: 'soat12-postgres-fsmt.postgres.database.azure.com'
             - name: DB_PORT
-              value: "5432"
+              value: '5432'
             - name: DB_USERNAME
-              value: "postgres"
+              value: 'postgres'
             - name: DB_PASSWORD
-              value: "vD3WTW0gGmahJdjCfXHG"
+              value: 'vD3WTW0gGmahJdjCfXHG'
             - name: DB_DATABASE
-              value: "payment_db"
+              value: 'payment_db'
             - name: DB_SCHEMA
-              value: "public"
+              value: 'public'
             - name: PGSSLMODE
-              value: "require"
+              value: 'require'
             - name: DB_SSL
-              value: "true"
+              value: 'true'
 
             # 3. Mensageria RabbitMQ
             - name: RABBITMQ_URL
-              value: "amqp://guest:guest@rabbitmq-service:5672"
+              value: 'amqp://guest:guest@rabbitmq-service:5672'
             - name: RABBITMQ_CONSUMER_MAX_RETRIES
-              value: "3"
+              value: '3'
             - name: RABBITMQ_CONSUMER_RETRY_DELAY_MS
-              value: "1000"
+              value: '1000'
             - name: DLQ_REPUBLISH_TO_MAIN
-              value: "false"
+              value: 'false'
 
             # 4. Segurança e Integrações (Mercado Pago)
             - name: JWT_SECRET
-              value: "508e703c81a194c84a9895bd04362f504b33d8366a2f371cc0d346074fa6e7697c8f2e9d2df38ac8edb86f4935a45037053f16821d1667d6c3d8afaf082f366f"
+              value: '508e703c81a194c84a9895bd04362f504b33d8366a2f371cc0d346074fa6e7697c8f2e9d2df38ac8edb86f4935a45037053f16821d1667d6c3d8afaf082f366f'
             - name: MERCADOPAGO_ACCESS_TOKEN
-              value: "TEST-4156346917851798-021713-5f683be5afff845e9af4be1b139cd88e-203445"
+              value: 'TEST-4156346917851798-021713-5f683be5afff845e9af4be1b139cd88e-203445'
