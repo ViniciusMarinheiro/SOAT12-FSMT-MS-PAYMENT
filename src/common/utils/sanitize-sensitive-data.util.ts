@@ -1,4 +1,4 @@
-export function sanitizeSensitiveData(data: any): any {
+export function sanitizeSensitiveData(data: unknown): unknown {
   if (!data || typeof data !== 'object') {
     return data;
   }
@@ -20,7 +20,9 @@ export function sanitizeSensitiveData(data: any): any {
     );
   }
 
-  const sanitized = { ...data };
+  const sanitized: Record<string, unknown> = {
+    ...(data as Record<string, unknown>),
+  };
 
   for (const key in sanitized) {
     if (sensitiveKeys.some((sk) => key.toLowerCase().includes(sk))) {

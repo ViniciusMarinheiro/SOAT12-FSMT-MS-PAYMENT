@@ -1,5 +1,4 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { LoggerModule as PinoLoggerModule, PinoLogger } from 'nestjs-pino';
+import { PinoLogger } from 'nestjs-pino';
 import { CustomLogger } from './custom.logger';
 
 // Mock implementation for testing
@@ -17,13 +16,15 @@ describe('CustomLogger', () => {
 
   beforeEach(async () => {
     // Reset static context rules
-    (CustomLogger as any).contextRules = {};
+    (
+      CustomLogger as unknown as { contextRules: Record<string, number> }
+    ).contextRules = {};
 
     // Create mock pino logger
     pino = new MockPinoLogger();
 
     // Create logger instance with mock
-    logger = new CustomLogger(pino as any);
+    logger = new CustomLogger(pino as unknown as PinoLogger);
   });
 
   afterEach(() => {
@@ -69,9 +70,11 @@ describe('CustomLogger', () => {
         'context=HighLevelContext;level=error/context=LowLevelContext;level=debug';
 
       // Reset to pick up new env var
-      (CustomLogger as any).contextRules = {};
+      (
+        CustomLogger as unknown as { contextRules: Record<string, number> }
+      ).contextRules = {};
 
-      const newLogger = new CustomLogger(pino as any);
+      const newLogger = new CustomLogger(pino as unknown as PinoLogger);
 
       newLogger.log('Test', 'HighLevelContext');
       expect(pino.info).not.toHaveBeenCalled();
@@ -92,9 +95,11 @@ describe('CustomLogger', () => {
 
     it('should log debug when configured', () => {
       process.env.LOG_RULES = 'context=*;level=debug';
-      (CustomLogger as any).contextRules = {};
+      (
+        CustomLogger as unknown as { contextRules: Record<string, number> }
+      ).contextRules = {};
 
-      const newLogger = new CustomLogger(pino as any);
+      const newLogger = new CustomLogger(pino as unknown as PinoLogger);
       newLogger.debug('Debug message', 'DebugContext');
 
       expect(pino.debug).toHaveBeenCalledWith(
@@ -107,9 +112,11 @@ describe('CustomLogger', () => {
 
     it('should sanitize object in debug', () => {
       process.env.LOG_RULES = 'context=*;level=debug';
-      (CustomLogger as any).contextRules = {};
+      (
+        CustomLogger as unknown as { contextRules: Record<string, number> }
+      ).contextRules = {};
 
-      const newLogger = new CustomLogger(pino as any);
+      const newLogger = new CustomLogger(pino as unknown as PinoLogger);
       const context = {
         useCase: 'TestUseCase',
         password: 'secret123',
@@ -195,9 +202,11 @@ describe('CustomLogger', () => {
 
     it('should log verbose when configured', () => {
       process.env.LOG_RULES = 'context=*;level=trace';
-      (CustomLogger as any).contextRules = {};
+      (
+        CustomLogger as unknown as { contextRules: Record<string, number> }
+      ).contextRules = {};
 
-      const newLogger = new CustomLogger(pino as any);
+      const newLogger = new CustomLogger(pino as unknown as PinoLogger);
       newLogger.verbose('Verbose message', 'VerboseContext');
 
       expect(pino.trace).toHaveBeenCalledWith(
@@ -210,9 +219,11 @@ describe('CustomLogger', () => {
 
     it('should sanitize in verbose', () => {
       process.env.LOG_RULES = 'context=*;level=trace';
-      (CustomLogger as any).contextRules = {};
+      (
+        CustomLogger as unknown as { contextRules: Record<string, number> }
+      ).contextRules = {};
 
-      const newLogger = new CustomLogger(pino as any);
+      const newLogger = new CustomLogger(pino as unknown as PinoLogger);
       const context = {
         useCase: 'VerboseTest',
         secret: 'secret_value',
@@ -302,10 +313,12 @@ describe('CustomLogger', () => {
 
   describe('context rules', () => {
     it('should initialize default context rule', () => {
-      (CustomLogger as any).contextRules = {};
+      (
+        CustomLogger as unknown as { contextRules: Record<string, number> }
+      ).contextRules = {};
       delete process.env.LOG_RULES;
 
-      const newLogger = new CustomLogger(pino as any);
+      const newLogger = new CustomLogger(pino as unknown as PinoLogger);
       newLogger.log('Test', 'AnyContext');
 
       expect(pino.info).toHaveBeenCalled();
@@ -315,9 +328,11 @@ describe('CustomLogger', () => {
       process.env.LOG_RULES =
         'context=PaymentService;level=error/context=AuthService;level=debug';
 
-      (CustomLogger as any).contextRules = {};
+      (
+        CustomLogger as unknown as { contextRules: Record<string, number> }
+      ).contextRules = {};
 
-      const newLogger = new CustomLogger(pino as any);
+      const newLogger = new CustomLogger(pino as unknown as PinoLogger);
 
       // PaymentService should only log errors
       newLogger.debug('Debug', 'PaymentService');
@@ -339,9 +354,11 @@ describe('CustomLogger', () => {
     it('should handle multiple contexts in single rule', () => {
       process.env.LOG_RULES = 'context=Service1,Service2;level=warn';
 
-      (CustomLogger as any).contextRules = {};
+      (
+        CustomLogger as unknown as { contextRules: Record<string, number> }
+      ).contextRules = {};
 
-      const newLogger = new CustomLogger(pino as any);
+      const newLogger = new CustomLogger(pino as unknown as PinoLogger);
 
       // Service1 should log warn and up
       newLogger.debug('Debug', 'Service1');
@@ -356,9 +373,11 @@ describe('CustomLogger', () => {
     it('should use default level when context not found', () => {
       process.env.LOG_RULES = 'context=SpecificService;level=error';
 
-      (CustomLogger as any).contextRules = {};
+      (
+        CustomLogger as unknown as { contextRules: Record<string, number> }
+      ).contextRules = {};
 
-      const newLogger = new CustomLogger(pino as any);
+      const newLogger = new CustomLogger(pino as unknown as PinoLogger);
 
       // Unknown context should use default level (info)
       newLogger.log('Info', 'UnknownService');
@@ -372,9 +391,11 @@ describe('CustomLogger', () => {
     it('should not log trace when level is info', () => {
       process.env.LOG_RULES = 'context=TestContext;level=info';
 
-      (CustomLogger as any).contextRules = {};
+      (
+        CustomLogger as unknown as { contextRules: Record<string, number> }
+      ).contextRules = {};
 
-      const newLogger = new CustomLogger(pino as any);
+      const newLogger = new CustomLogger(pino as unknown as PinoLogger);
 
       newLogger.verbose('Trace', 'TestContext');
       newLogger.debug('Debug', 'TestContext');
@@ -391,9 +412,11 @@ describe('CustomLogger', () => {
     it('should respect log level hierarchy', () => {
       process.env.LOG_RULES = 'context=Service;level=warn';
 
-      (CustomLogger as any).contextRules = {};
+      (
+        CustomLogger as unknown as { contextRules: Record<string, number> }
+      ).contextRules = {};
 
-      const newLogger = new CustomLogger(pino as any);
+      const newLogger = new CustomLogger(pino as unknown as PinoLogger);
 
       newLogger.verbose('V', 'Service');
       newLogger.debug('D', 'Service');
@@ -414,30 +437,24 @@ describe('CustomLogger', () => {
     it('should handle array context (passed as-is)', () => {
       const context = ['item1', 'item2'];
 
-      logger.log('Message', context as any);
+      logger.log('Message', context as unknown as Record<string, unknown>);
 
-      expect(pino.info).toHaveBeenCalledWith(
-        { context },
-        'Message',
-      );
+      expect(pino.info).toHaveBeenCalledWith({ context }, 'Message');
     });
 
     it('should handle null context', () => {
-      logger.log('Message', null);
-
-      expect(pino.info).toHaveBeenCalledWith(
-        { context: null },
+      logger.log(
         'Message',
+        null as unknown as string | Record<string, unknown>,
       );
+
+      expect(pino.info).toHaveBeenCalledWith({ context: null }, 'Message');
     });
 
     it('should handle undefined context', () => {
       logger.log('Message', undefined);
 
-      expect(pino.info).toHaveBeenCalledWith(
-        { context: undefined },
-        'Message',
-      );
+      expect(pino.info).toHaveBeenCalledWith({ context: undefined }, 'Message');
     });
 
     it('should handle empty object context', () => {

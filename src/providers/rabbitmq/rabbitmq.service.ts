@@ -2,14 +2,12 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
 import { MessageConfig } from './types/message.interface';
 import { EnvConfigService } from '@/common/service/env/env-config.service';
 import { EnvConfigModule } from '@/common/service/env/env-config.module';
-import { getRabbitMQConfigs } from './rabbitmq.config';
-
 export class RabbitMQService {
   constructor(private readonly configService: EnvConfigService) {}
 
   createClientOptions(config: MessageConfig) {
     const url = this.configService.get('RABBITMQ_URL') || 'amqp://localhost';
-    const options: any = {
+    const options: Record<string, unknown> = {
       transport: Transport.RMQ,
       options: {
         urls: [url],
@@ -26,8 +24,11 @@ export class RabbitMQService {
         },
       },
     };
-    if (config.exchange) options.options.exchange = config.exchange;
-    if (config.routingKey) options.options.routingKey = config.routingKey;
+    if (config.exchange)
+      (options.options as Record<string, unknown>).exchange = config.exchange;
+    if (config.routingKey)
+      (options.options as Record<string, unknown>).routingKey =
+        config.routingKey;
     return options;
   }
 

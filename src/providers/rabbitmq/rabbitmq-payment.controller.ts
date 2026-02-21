@@ -76,9 +76,10 @@ export class RabbitMQPaymentController {
         // Fazer ACK da mensagem
         try {
           channel.ack(originalMessage);
-        } catch (ackError: any) {
+        } catch (ackError: unknown) {
           this.logger.warn('Erro ao fazer ACK da mensagem', {
-            error: ackError.message,
+            error:
+              ackError instanceof Error ? ackError.message : String(ackError),
           });
         }
         return;
@@ -104,9 +105,12 @@ export class RabbitMQPaymentController {
                 error: (error as Error)?.stack || String(error),
               },
             });
-          } catch (publishError: any) {
+          } catch (publishError: unknown) {
             this.logger.error('Erro ao publicar resultado de erro', {
-              error: publishError.message,
+              error:
+                publishError instanceof Error
+                  ? publishError.message
+                  : String(publishError),
             });
           }
         }
@@ -124,9 +128,10 @@ export class RabbitMQPaymentController {
 
     try {
       channel.nack(originalMessage, false, false);
-    } catch (nackError: any) {
+    } catch (nackError: unknown) {
       this.logger.warn('Erro ao fazer NACK da mensagem', {
-        error: nackError.message,
+        error:
+          nackError instanceof Error ? nackError.message : String(nackError),
       });
     }
   }

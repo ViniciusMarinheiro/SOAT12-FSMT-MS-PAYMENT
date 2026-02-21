@@ -31,31 +31,31 @@ describe('sanitizeSensitiveData', () => {
   describe('sensitive keys', () => {
     it('should sanitize password field', () => {
       const data = { password: 'secret123' };
-      const result = sanitizeSensitiveData(data);
+      const result = sanitizeSensitiveData(data) as Record<string, unknown>;
       expect(result.password).toBe('***');
     });
 
     it('should sanitize token field', () => {
       const data = { token: 'abc123def456' };
-      const result = sanitizeSensitiveData(data);
+      const result = sanitizeSensitiveData(data) as Record<string, unknown>;
       expect(result.token).toBe('***');
     });
 
     it('should sanitize secret field', () => {
       const data = { secret: 'my-secret-key' };
-      const result = sanitizeSensitiveData(data);
+      const result = sanitizeSensitiveData(data) as Record<string, unknown>;
       expect(result.secret).toBe('***');
     });
 
     it('should sanitize authorization field', () => {
       const data = { authorization: 'Bearer token123' };
-      const result = sanitizeSensitiveData(data);
+      const result = sanitizeSensitiveData(data) as Record<string, unknown>;
       expect(result.authorization).toBe('***');
     });
 
     it('should sanitize auth field', () => {
       const data = { auth: 'credentials' };
-      const result = sanitizeSensitiveData(data);
+      const result = sanitizeSensitiveData(data) as Record<string, unknown>;
       expect(result.auth).toBe('***');
     });
 
@@ -68,7 +68,7 @@ describe('sanitizeSensitiveData', () => {
         AUTH: 'secret5',
       };
 
-      const result = sanitizeSensitiveData(data);
+      const result = sanitizeSensitiveData(data) as Record<string, unknown>;
 
       expect(result.PASSWORD).toBe('***');
       expect(result.Token).toBe('***');
@@ -86,7 +86,7 @@ describe('sanitizeSensitiveData', () => {
         custom_auth: 'auth123',
       };
 
-      const result = sanitizeSensitiveData(data);
+      const result = sanitizeSensitiveData(data) as Record<string, unknown>;
 
       expect(result.my_password).toBe('***');
       expect(result.access_token).toBe('***');
@@ -104,7 +104,7 @@ describe('sanitizeSensitiveData', () => {
         name: 'John Doe',
       };
 
-      const result = sanitizeSensitiveData(data);
+      const result = sanitizeSensitiveData(data) as Record<string, unknown>;
 
       expect(result.username).toBe('john_doe');
       expect(result.email).toBe('john@example.com');
@@ -121,10 +121,11 @@ describe('sanitizeSensitiveData', () => {
         },
       };
 
-      const result = sanitizeSensitiveData(data);
+      const result = sanitizeSensitiveData(data) as Record<string, unknown>;
+      const user = result.user as Record<string, unknown>;
 
-      expect(result.user.username).toBe('john');
-      expect(result.user.password).toBe('***');
+      expect(user.username).toBe('john');
+      expect(user.password).toBe('***');
     });
 
     it('should sanitize deeply nested sensitive fields', () => {
@@ -139,10 +140,13 @@ describe('sanitizeSensitiveData', () => {
         },
       };
 
-      const result = sanitizeSensitiveData(data);
+      const result = sanitizeSensitiveData(data) as Record<string, unknown>;
+      const level1 = result.level1 as Record<string, unknown>;
+      const level2 = level1.level2 as Record<string, unknown>;
+      const level3 = level2.level3 as Record<string, unknown>;
 
-      expect(result.level1.level2.level3.token).toBe('***');
-      expect(result.level1.level2.level3.data).toBe('public_data');
+      expect(level3.token).toBe('***');
+      expect(level3.data).toBe('public_data');
     });
 
     it('should handle mixed sensitive and non-sensitive fields', () => {
@@ -154,7 +158,7 @@ describe('sanitizeSensitiveData', () => {
         token: 'abc123',
       };
 
-      const result = sanitizeSensitiveData(data);
+      const result = sanitizeSensitiveData(data) as Record<string, unknown>;
 
       expect(result.id).toBe(1);
       expect(result.username).toBe('user123');
@@ -173,12 +177,13 @@ describe('sanitizeSensitiveData', () => {
         ],
       };
 
-      const result = sanitizeSensitiveData(data);
+      const result = sanitizeSensitiveData(data) as Record<string, unknown>;
+      const users = result.users as Array<Record<string, unknown>>;
 
-      expect(result.users[0].password).toBe('***');
-      expect(result.users[1].password).toBe('***');
-      expect(result.users[0].username).toBe('user1');
-      expect(result.users[1].username).toBe('user2');
+      expect(users[0].password).toBe('***');
+      expect(users[1].password).toBe('***');
+      expect(users[0].username).toBe('user1');
+      expect(users[1].username).toBe('user2');
     });
 
     it('should handle arrays with primitives', () => {
@@ -186,7 +191,7 @@ describe('sanitizeSensitiveData', () => {
         items: [1, 2, 3],
       };
 
-      const result = sanitizeSensitiveData(data);
+      const result = sanitizeSensitiveData(data) as Record<string, unknown>;
 
       expect(Array.isArray(result.items)).toBe(true);
       expect(result.items).toEqual([1, 2, 3]);
@@ -195,7 +200,7 @@ describe('sanitizeSensitiveData', () => {
 
   describe('edge cases', () => {
     it('should handle empty object', () => {
-      const result = sanitizeSensitiveData({});
+      const result = sanitizeSensitiveData({}) as Record<string, unknown>;
       expect(result).toEqual({});
     });
 
@@ -206,7 +211,7 @@ describe('sanitizeSensitiveData', () => {
         secret: 's1',
       };
 
-      const result = sanitizeSensitiveData(data);
+      const result = sanitizeSensitiveData(data) as Record<string, unknown>;
 
       expect(result.password).toBe('***');
       expect(result.token).toBe('***');
@@ -233,7 +238,7 @@ describe('sanitizeSensitiveData', () => {
         token: null,
       };
 
-      const result = sanitizeSensitiveData(data);
+      const result = sanitizeSensitiveData(data) as Record<string, unknown>;
 
       expect(result.password).toBe('***');
       expect(result.token).toBe('***');
@@ -256,11 +261,13 @@ describe('sanitizeSensitiveData', () => {
         },
       };
 
-      const result = sanitizeSensitiveData(request);
+      const result = sanitizeSensitiveData(request) as Record<string, unknown>;
+      const headers = result.headers as Record<string, unknown>;
+      const body = result.body as Record<string, unknown>;
 
-      expect(result.headers.authorization).toBe('***');
-      expect(result.body.password).toBe('***');
-      expect(result.body.email).toBe('user@example.com');
+      expect(headers.authorization).toBe('***');
+      expect(body.password).toBe('***');
+      expect(body.email).toBe('user@example.com');
       expect(result.url).toBe('/api/login');
     });
 
@@ -275,11 +282,12 @@ describe('sanitizeSensitiveData', () => {
         },
       };
 
-      const result = sanitizeSensitiveData(error);
+      const result = sanitizeSensitiveData(error) as Record<string, unknown>;
+      const context = result.context as Record<string, unknown>;
 
-      expect(result.context.connectionSecret).toBe('***');
-      expect(result.context.apiToken).toBe('***');
-      expect(result.context.userId).toBe(123);
+      expect(context.connectionSecret).toBe('***');
+      expect(context.apiToken).toBe('***');
+      expect(context.userId).toBe(123);
       expect(result.status).toBe(500);
     });
   });

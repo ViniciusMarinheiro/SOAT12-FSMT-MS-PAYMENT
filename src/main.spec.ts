@@ -26,7 +26,7 @@ jest.mock('@nestjs/swagger', () => {
 });
 
 describe('main.ts bootstrap', () => {
-  let mockApp: any;
+  let mockApp: Record<string, unknown>;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -42,7 +42,7 @@ describe('main.ts bootstrap', () => {
         get: jest.fn(),
         getType: jest.fn().mockReturnValue('http'),
       }),
-      get: jest.fn((token: any) => {
+      get: jest.fn((token: unknown) => {
         if (token === CustomLogger) return {};
         if (token === EnvConfigService) {
           return {

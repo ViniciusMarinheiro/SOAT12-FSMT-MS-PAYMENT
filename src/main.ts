@@ -98,9 +98,12 @@ export async function bootstrap() {
 
   app
     .getHttpAdapter()
-    .get(`/${prefix}/documentation/json`, (req: any, res: any) => {
-      res.send(document);
-    });
+    .get(
+      `/${prefix}/documentation/json`,
+      (req: unknown, res: { send: (doc: unknown) => void }) => {
+        res.send(document);
+      },
+    );
 
   await app.listen(port);
   logger.log(`HTTP server started on port ${port}`);

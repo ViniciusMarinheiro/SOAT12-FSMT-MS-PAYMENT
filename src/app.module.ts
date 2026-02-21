@@ -18,7 +18,7 @@ const isDevelopment = process.env.NODE_ENV !== 'production' && !isTest;
 const getNewRelicMetadata = () => {
   try {
     return newrelic.getLinkingMetadata();
-  } catch (error) {
+  } catch {
     return {};
   }
 };
@@ -47,7 +47,7 @@ const getNewRelicMetadata = () => {
             statusCode: res.statusCode,
           }),
         },
-        customLogLevel: (req, res, err) => {
+        customLogLevel: (req, res, _err) => {
           if (res.statusCode >= 500) {
             return 'error';
           } else if (res.statusCode >= 400) {
