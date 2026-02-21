@@ -119,6 +119,7 @@ jobs:
         with:
           manifests: |
             k8s/secret.yaml
+            k8s/rabbitmq.yaml
             k8s/deployment.yaml
             k8s/service.yaml
           images: |
