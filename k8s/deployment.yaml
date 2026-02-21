@@ -18,8 +18,12 @@ spec:
         - name: payment-service
           image: soat12acr.azurecr.io/oficina-payment:latest 
           ports:
-            - containerPort: 3001 # 👈 Alinhado com o Dockerfile
+            - containerPort: 3001
           env:
+            # 🟢 Variável do New Relic adicionada aqui
+            - name: NEW_RELIC_APP_NAME
+              value: "12_soat_payment"
+
             # 1. Configurações da Aplicação
             - name: NODE_ENV
               value: "production"
@@ -43,7 +47,6 @@ spec:
               value: "payment_db"
             - name: DB_SCHEMA
               value: "public"
-            # Obrigatórios para a Azure
             - name: PGSSLMODE
               value: "require"
             - name: DB_SSL
@@ -51,7 +54,7 @@ spec:
 
             # 3. Mensageria RabbitMQ
             - name: RABBITMQ_URL
-              value: "amqp://guest:guest@rabbitmq-service:5672" # Nome do service do RabbitMQ que já criamos
+              value: "amqp://guest:guest@rabbitmq-service:5672"
             - name: RABBITMQ_CONSUMER_MAX_RETRIES
               value: "3"
             - name: RABBITMQ_CONSUMER_RETRY_DELAY_MS
