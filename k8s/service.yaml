@@ -1,12 +1,12 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: order-service
+  name: payment-service
 spec:
-  type: ClusterIP # Apenas interno (segurança padrão)
+  type: ClusterIP 
   selector:
-    app: order-service
+    app: payment-service
   ports:
     - protocol: TCP
-      port: 80      # Porta exposta para o cluster
-      targetPort: 8080 # Porta da aplicação Spring
+      port: 80
+      targetPort: 3001 # 👈 A porta exata que o NestJS está ouvindo

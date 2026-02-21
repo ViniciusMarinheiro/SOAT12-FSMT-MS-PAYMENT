@@ -8,7 +8,7 @@ on:
 
 env:
   NODE_VERSION: '22'
-  ACR_NAME: acrfsmt
+  ACR_NAME: soat12acr # 👈 Corrigido para o ACR que o AKS já tem acesso
   IMAGE_NAME: oficina-payment
   RESOURCE_GROUP: SOAT12-FSMT-RG
   CLUSTER_NAME: SOAT12-FSMT-AKS
@@ -49,7 +49,6 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'yarn'
-      - run: yarn install --frozen-lockfile || npm install
       - run: yarn audit || npm audit --audit-level=high || true
 
   build-and-deploy:
@@ -125,7 +124,7 @@ jobs:
           echo "=== PODS STATUS ==="
           kubectl get pods -n default || echo "Falha ao ler pods"
           echo "=== LOGS ==="
-          kubectl logs -l app=oficina-payment --tail=50 --all-containers=true || echo "Falha ao ler logs"
+          kubectl logs -l app=payment-service --tail=50 --all-containers=true || echo "Falha ao ler logs" # 👈 Ajustado o nome do app
 
       - name: Apply Instrumentation
         run: kubectl apply -f k8s/instrumentation.yaml || true

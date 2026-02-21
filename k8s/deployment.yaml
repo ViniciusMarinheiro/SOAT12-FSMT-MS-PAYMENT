@@ -5,7 +5,7 @@ metadata:
   labels:
     app: payment-service
 spec:
-  replicas: 1 # Mantido em 1 para economizar recursos no Node único
+  replicas: 1 
   selector:
     matchLabels:
       app: payment-service
@@ -16,37 +16,51 @@ spec:
     spec:
       containers:
         - name: payment-service
-          # O Pipeline substituirá IMAGE_PLACEHOLDER pela imagem real do ACR
-          image: IMAGE_PLACEHOLDER
+          image: soat12acr.azurecr.io/oficina-payment:latest 
           ports:
-            - containerPort: 3000
+            - containerPort: 3001 # 👈 Alinhado com o Dockerfile
           env:
+            # 1. Configurações da Aplicação
+            - name: NODE_ENV
+              value: "production"
             - name: PORT
-              value: "3000"
-            # Conexão com o Banco Relacional (Postgres)
-            # DICA: Crie um database chamado 'payment_db' no seu servidor Postgres
+              value: "3001"
+            - name: DOCUMENTATION_PREFIX
+              value: "api/v1/payments"
+
+            # 2. Banco de Dados na Azure
             - name: DATABASE_URL
-              value: "postgresql://postgres:SUA_SENHA_AQUI@HOST_DO_SEU_POSTGRES_AZURE:5432/payment_db"
-            # Conexão com o RabbitMQ interno do cluster
+              value: "postgresql://postgres:vD3WTW0gGmahJdjCfXHG@soat12-postgres-fsmt.postgres.database.azure.com:5432/payment_db"
+            - name: DB_HOST
+              value: "soat12-postgres-fsmt.postgres.database.azure.com"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_USERNAME
+              value: "postgres"
+            - name: DB_PASSWORD
+              value: "vD3WTW0gGmahJdjCfXHG"
+            - name: DB_DATABASE
+              value: "payment_db"
+            - name: DB_SCHEMA
+              value: "public"
+            # Obrigatórios para a Azure
+            - name: PGSSLMODE
+              value: "require"
+            - name: DB_SSL
+              value: "true"
+
+            # 3. Mensageria RabbitMQ
             - name: RABBITMQ_URL
-              value: "amqp://guest:guest@rabbitmq:5672"
-          resources:
-            requests:
-              memory: "256Mi"
-              cpu: "100m"
-            limits:
-              memory: "512Mi"
-              cpu: "500m"
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: payment-service
-spec:
-  type: ClusterIP # Apenas comunicação interna
-  selector:
-    app: payment-service
-  ports:
-    - protocol: TCP
-      port: 80
-      targetPort: 3000
+              value: "amqp://guest:guest@rabbitmq-service:5672" # Nome do service do RabbitMQ que já criamos
+            - name: RABBITMQ_CONSUMER_MAX_RETRIES
+              value: "3"
+            - name: RABBITMQ_CONSUMER_RETRY_DELAY_MS
+              value: "1000"
+            - name: DLQ_REPUBLISH_TO_MAIN
+              value: "false"
+
+            # 4. Segurança e Integrações (Mercado Pago)
+            - name: JWT_SECRET
+              value: "508e703c81a194c84a9895bd04362f504b33d8366a2f371cc0d346074fa6e7697c8f2e9d2df38ac8edb86f4935a45037053f16821d1667d6c3d8afaf082f366f"
+            - name: MERCADOPAGO_ACCESS_TOKEN
+              value: "TEST-4156346917851798-021713-5f683be5afff845e9af4be1b139cd88e-203445"
