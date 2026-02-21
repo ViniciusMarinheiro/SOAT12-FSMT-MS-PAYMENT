@@ -1,4 +1,4 @@
-﻿name: CI/CD Pipeline - oficina-payment
+name: CI/CD Pipeline - oficina-payment
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 env:
   NODE_VERSION: '22'
-  ACR_NAME: soat12acr # 👈 Corrigido para o ACR que o AKS já tem acesso
+  ACR_NAME: soat12acr
   IMAGE_NAME: oficina-payment
   RESOURCE_GROUP: SOAT12-FSMT-RG
   CLUSTER_NAME: SOAT12-FSMT-AKS
@@ -70,6 +70,12 @@ jobs:
           docker build -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} .
           docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
+      - name: Setup Kubelogin
+        uses: azure/use-kubelogin@v1
+        with:
+          name: 'kubelogin'
+          version: 'latest'
+
       - name: Set AKS Context (Fix Kubelogin)
         uses: azure/aks-set-context@v3
         with:
@@ -124,7 +130,7 @@ jobs:
           echo "=== PODS STATUS ==="
           kubectl get pods -n default || echo "Falha ao ler pods"
           echo "=== LOGS ==="
-          kubectl logs -l app=payment-service --tail=50 --all-containers=true || echo "Falha ao ler logs" # 👈 Ajustado o nome do app
+          kubectl logs -l app=payment-service --tail=50 --all-containers=true || echo "Falha ao ler logs"
 
       - name: Apply Instrumentation
         run: kubectl apply -f k8s/instrumentation.yaml || true
