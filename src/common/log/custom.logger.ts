@@ -1,6 +1,7 @@
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { LoggerService } from '@nestjs/common';
 import { sanitizeSensitiveData } from '../utils/sanitize-sensitive-data.util';
+import * as newrelic from 'newrelic';
 
 export class CustomLogger implements LoggerService {
   private static contextRules: Record<string, number> = {};
@@ -25,71 +26,76 @@ export class CustomLogger implements LoggerService {
   }
 
   verbose(message: string, context?: string | any) {
+    const nrMetadata = this.getNewRelicMetadata();
     if (context && typeof context === 'object' && !Array.isArray(context)) {
       const sanitized = sanitizeSensitiveData(context);
       const logContext = sanitized.useCase || sanitized.context || '';
       if (this.shouldLog('trace', logContext)) {
-        this.logger.trace({ ...sanitized }, message);
+        this.logger.trace({ ...sanitized, ...nrMetadata }, message);
       }
     } else {
       if (this.shouldLog('trace', context ?? '')) {
-        this.logger.trace({ context }, message);
+        this.logger.trace({ context, ...nrMetadata }, message);
       }
     }
   }
 
   debug(message: string, context?: string | any) {
+    const nrMetadata = this.getNewRelicMetadata();
     if (context && typeof context === 'object' && !Array.isArray(context)) {
       const sanitized = sanitizeSensitiveData(context);
       const logContext = sanitized.useCase || sanitized.context || '';
       if (this.shouldLog('debug', logContext)) {
-        this.logger.debug({ ...sanitized }, message);
+        this.logger.debug({ ...sanitized, ...nrMetadata }, message);
       }
     } else {
       if (this.shouldLog('debug', context ?? '')) {
-        this.logger.debug({ context }, message);
+        this.logger.debug({ context, ...nrMetadata }, message);
       }
     }
   }
 
   log(message: string, context?: string | any) {
+    const nrMetadata = this.getNewRelicMetadata();
     if (context && typeof context === 'object' && !Array.isArray(context)) {
       const sanitized = sanitizeSensitiveData(context);
       const logContext = sanitized.useCase || sanitized.context || '';
       if (this.shouldLog('info', logContext)) {
-        this.logger.info({ ...sanitized }, message);
+        this.logger.info({ ...sanitized, ...nrMetadata }, message);
       }
     } else {
       if (this.shouldLog('info', context ?? '')) {
-        this.logger.info({ context }, message);
+        this.logger.info({ context, ...nrMetadata }, message);
       }
     }
   }
 
   warn(message: string, context?: string | any) {
+    const nrMetadata = this.getNewRelicMetadata();
     if (context && typeof context === 'object' && !Array.isArray(context)) {
       const sanitized = sanitizeSensitiveData(context);
       const logContext = sanitized.useCase || sanitized.context || '';
       if (this.shouldLog('warn', logContext)) {
-        this.logger.warn({ ...sanitized }, message);
+        this.logger.warn({ ...sanitized, ...nrMetadata }, message);
       }
     } else {
       if (this.shouldLog('warn', context ?? '')) {
-        this.logger.warn({ context }, message);
+        this.logger.warn({ context, ...nrMetadata }, message);
       }
     }
   }
 
   error(message: string, trace?: string, context?: string | any) {
+    const nrMetadata = this.getNewRelicMetadata();
     if (context && typeof context === 'object' && !Array.isArray(context)) {
       const sanitized = sanitizeSensitiveData(context);
       const logContext = sanitized.useCase || sanitized.context || '';
       if (this.shouldLog('error', logContext)) {
-        this.logger.error({ ...sanitized, trace }, message);
+        this.logger.error({ ...sanitized, trace, ...nrMetadata }, message);
       }
     } else {
       if (this.shouldLog('error', context ?? '')) {
-        this.logger.error({ context, trace }, message);
+        this.logger.error({ context, trace, ...nrMetadata }, message);
       }
     }
   }
@@ -138,5 +144,13 @@ export class CustomLogger implements LoggerService {
       CustomLogger.contextRules[this.DEFAULT_CONTEXT] ??
       this.LOG_LEVEL_MAP[this.DEFAULT_LEVEL];
     return level;
+  }
+
+  private getNewRelicMetadata(): Record<string, any> {
+    try {
+      return newrelic.getLinkingMetadata();
+    } catch (error) {
+      return {};
+    }
   }
 }
