@@ -3,10 +3,10 @@ kind: Service
 metadata:
   name: payment-service
 spec:
-  type: ClusterIP 
+  type: LoadBalancer # 👈 Mudou de ClusterIP para LoadBalancer
   selector:
     app: payment-service
   ports:
     - protocol: TCP
       port: 80
-      targetPort: 3001 # 👈 A porta exata que o NestJS está ouvindo
+      targetPort: 3001
